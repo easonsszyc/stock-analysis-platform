@@ -1,6 +1,7 @@
 import { callDataApi } from '../_core/dataApi.js';
 import { getDisplayName } from '../data/stock-names-zh.js';
 import { CacheService } from './cache.service.js';
+import { searchStockByTencent } from './tencent-stock-search.service.js';
 
 export interface StockSearchResult {
   symbol: string;
@@ -14,6 +15,7 @@ export interface StockSearchResult {
 export class StockSearchService {
   /**
    * 智能搜索股票 - 自动识别市场并返回候选列表
+   * 优先使用Yahoo Finance API，失败时自动切换到腾讯财经API
    */
   async searchStock(query: string): Promise<StockSearchResult[]> {
     // 检查缓存
@@ -23,10 +25,55 @@ export class StockSearchService {
       return cached;
     }
     
-    const candidates: StockSearchResult[] = [];
+    let candidates: StockSearchResult[] = [];
+    let useYahooFinance = true;
     
     // 清理输入
     const cleanQuery = query.trim().toUpperCase();
+    
+    // 尝试使用Yahoo Finance API
+    try {
+      candidates = await this.searchWithYahooFinance(cleanQuery);
+      console.log(`[StockSearch] Yahoo Finance returned ${candidates.length} results`);
+    } catch (error: any) {
+      // 如果Yahoo Finance API配额耗尽，切换到腾讯财经API
+      if (error.message && error.message.includes('API_QUOTA_EXHAUSTED')) {
+        console.log('[StockSearch] Yahoo Finance API quota exhausted, switching to Tencent API');
+        useYahooFinance = false;
+      } else {
+        console.error('[StockSearch] Yahoo Finance API error:', error);
+        useYahooFinance = false;
+      }
+    }
+    
+    // 如果Yahoo Finance失败，使用腾讯财经API
+    if (!useYahooFinance || candidates.length === 0) {
+      console.log('[StockSearch] Using Tencent Finance API as fallback');
+      const tencentResults = await searchStockByTencent(query);
+      candidates = tencentResults.map(r => ({
+        symbol: r.symbol,
+        name: r.name,
+        nameCn: r.name,
+        exchange: r.exchange,
+        market: r.market,
+        currency: r.market === 'US' ? 'USD' : r.market === 'HK' ? 'HKD' : 'CNY'
+      }));
+      console.log(`[StockSearch] Tencent API returned ${candidates.length} results`);
+    }
+    
+    // 缓存结果
+    if (candidates.length > 0) {
+      CacheService.setSearchCache(query, candidates);
+    }
+    
+    return candidates;
+  }
+  
+  /**
+   * 使用Yahoo Finance API搜索
+   */
+  private async searchWithYahooFinance(cleanQuery: string): Promise<StockSearchResult[]> {
+    const candidates: StockSearchResult[] = [];
     
     // 策略1: 如果是纯数字，尝试港股
     if (/^\d+$/.test(cleanQuery)) {
@@ -41,7 +88,6 @@ export class StockSearchService {
       const szResult = await this.tryFetchStock(`${cleanQuery}.SZ`, 'CN');
       if (szResult) candidates.push(szResult);
     }
-    
     // 策略2: 如果包含字母，优先尝试美股
     else if (/^[A-Z]+$/.test(cleanQuery)) {
       const usResult = await this.tryFetchStock(cleanQuery, 'US');
@@ -68,11 +114,6 @@ export class StockSearchService {
       
       const szResult = await this.tryFetchStock(`${cleanQuery}.SZ`, 'CN');
       if (szResult) candidates.push(szResult);
-    }
-    
-    // 缓存结果
-    if (candidates.length > 0) {
-      CacheService.setSearchCache(query, candidates);
     }
     
     return candidates;
