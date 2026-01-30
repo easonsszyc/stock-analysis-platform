@@ -459,4 +459,11 @@
 - [x] 实现鼠标悬停信号点时高亮配对的另一个信号点
 - [x] 优化信号点样式（悬停时放大、配对点高亮）
 - [x] TypeScript编译通过（0错误）
+- [x] 保存检查点并交付给用户（版本号：2afee7b4）
+
+## 紧急BUG修复 - SignalDetailDialog TypeError
+
+- [x] 修复SignalDetailDialog中 pairedSignal未定义导致的TypeError
+- [x] 添加pairedSignal存在性检查（使用可选链操作符?.）
+- [x] TypeScript编译通过（0错误）
 - [ ] 保存检查点并交付给用户

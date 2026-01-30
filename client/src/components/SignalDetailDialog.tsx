@@ -113,11 +113,11 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
               <div className="text-sm space-y-2">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">买入价格：</span>
-                  <span className="font-semibold text-red-400">{isBuy ? signal.price.toFixed(2) : signal.pairedSignal.price.toFixed(2)}</span>
+                  <span className="font-semibold text-red-400">{isBuy ? signal.price.toFixed(2) : (signal.pairedSignal?.price?.toFixed(2) || '-')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">卖出价格：</span>
-                  <span className="font-semibold text-green-400">{isBuy ? (signal.pairedSignal.price.toFixed(2)) : signal.price.toFixed(2)}</span>
+                  <span className="font-semibold text-green-400">{isBuy ? (signal.pairedSignal?.price?.toFixed(2) || '-') : signal.price.toFixed(2)}</span>
                 </div>
                 {signal.profitLoss !== undefined && (
                   <>
