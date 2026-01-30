@@ -72,6 +72,8 @@ export class StockSearchService {
     try {
       const region = market === 'CN' ? 'CN' : market === 'HK' ? 'HK' : 'US';
       
+      console.log(`[StockSearch] Trying to fetch ${symbol} in ${market} market (region: ${region})`);
+      
       const response: any = await callDataApi('YahooFinance/get_stock_chart', {
         query: {
           symbol: symbol,
@@ -81,10 +83,15 @@ export class StockSearchService {
           includeAdjustedClose: 'true'
         }
       });
+      
+      console.log(`[StockSearch] API response for ${symbol}:`, JSON.stringify(response).substring(0, 300));
 
       if (!response || !response.chart || !response.chart.result || response.chart.result.length === 0) {
+        console.log(`[StockSearch] No valid data for ${symbol}`);
         return null;
       }
+      
+      console.log(`[StockSearch] Successfully fetched ${symbol}`);
 
       const result = response.chart.result[0];
       const meta = result.meta;
@@ -100,7 +107,8 @@ export class StockSearchService {
         market: market,
         currency: meta.currency
       };
-    } catch (error) {
+    } catch (error: any) {
+      console.error(`[StockSearch] Error fetching ${symbol}:`, error.message);
       return null;
     }
   }

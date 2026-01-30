@@ -3,7 +3,6 @@ import { stockDataService } from '../services/stock-data.service';
 import { technicalAnalysisService } from '../services/technical-analysis.service';
 import { stockComparisonService } from '../services/stock-comparison.service';
 import { stockSearchService } from '../services/stock-search.service';
-import { tradingStrategyService, StrategyRecommendation } from '../services/trading-strategy.service';
 import type {
   AnalyzeStockRequest,
   CompareStocksRequest,
@@ -14,52 +13,6 @@ import type {
 } from '../../shared/stock-types';
 
 const router = Router();
-
-/**
- * 将策略推荐数据转换为前端期望的中文字段格式
- */
-function transformStrategyForFrontend(strategy: StrategyRecommendation) {
-  // 计算推荐指数（基于适配度和推荐等级）
-  let recommendationScore = strategy.suitabilityScore;
-  if (strategy.recommendation === 'highly_suitable') {
-    recommendationScore = Math.min(100, recommendationScore + 10);
-  } else if (strategy.recommendation === 'not_suitable') {
-    recommendationScore = Math.max(0, recommendationScore - 20);
-  }
-
-  // 格式化入场建议
-  const entryAdvice = strategy.entryPoints.length > 0
-    ? strategy.entryPoints.map(ep => `在${ep.price.toFixed(2)}附近${ep.reason}（置信度：${ep.confidence === 'high' ? '高' : ep.confidence === 'medium' ? '中' : '低'}）`).join('；')
-    : '等待合适的入场时机';
-
-  // 格式化出场建议
-  const takeProfitPoints = strategy.exitPoints.filter(ep => ep.type === 'take_profit');
-  const exitAdvice = takeProfitPoints.length > 0
-    ? takeProfitPoints.map(ep => `目标价位${ep.price.toFixed(2)}，${ep.reason}`).join('；')
-    : '根据市场情况灵活调整';
-
-  // 格式化止损建议
-  const stopLossPoints = strategy.exitPoints.filter(ep => ep.type === 'stop_loss');
-  const stopLossAdvice = stopLossPoints.length > 0
-    ? stopLossPoints.map(ep => `止损价位${ep.price.toFixed(2)}，${ep.reason}`).join('；')
-    : '建议设置合理止损';
-
-  // 转换风险等级为大写
-  const riskLevel = strategy.riskLevel.toUpperCase() as 'LOW' | 'MEDIUM' | 'HIGH';
-
-  return {
-    适配度: strategy.suitabilityScore,
-    推荐指数: recommendationScore,
-    风险等级: riskLevel,
-    入场建议: entryAdvice,
-    出场建议: exitAdvice,
-    止损建议: stopLossAdvice,
-    预期收益: strategy.expectedReturn,
-    持仓时长: strategy.holdingPeriod,
-    操作要点: strategy.operationSuggestions,
-    风险提示: strategy.keyFactors
-  };
-}
 
 /**
  * 智能搜索股票 - 自动识别市场
@@ -181,25 +134,11 @@ router.post('/analyze', async (req, res) => {
         reasoning
       }
     };
-    
-    // 生成交易策略推荐
-    const scalpingStrategy = tradingStrategyService.evaluateScalpingStrategy(analysis);
-    const swingStrategy = tradingStrategyService.evaluateSwingStrategy(analysis);
-
-    // 转换为前端期望的格式
-    const transformedScalping = transformStrategyForFrontend(scalpingStrategy);
-    const transformedSwing = transformStrategyForFrontend(swingStrategy);
 
     res.json({
       success: true,
-      data: {
-        ...analysis,
-        tradingStrategies: {
-          scalping: transformedScalping,
-          swing: transformedSwing
-        }
-      }
-    } as ApiResponse<any>);
+      data: analysis
+    } as ApiResponse<StockAnalysis>);
   } catch (error: any) {
     console.error('Analyze stock error:', error);
     res.status(500).json({

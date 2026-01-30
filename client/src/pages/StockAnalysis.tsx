@@ -5,9 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, TrendingUp, ArrowUpDown, Loader2, Sparkles, BarChart3, Star } from 'lucide-react';
-import { trpc } from '@/lib/trpc';
-import { Link } from 'wouter';
+import { Search, TrendingUp, ArrowUpDown, Loader2, Sparkles, BarChart3 } from 'lucide-react';
 import { StockAnalysisView } from '../components/StockAnalysisView';
 import { StockComparisonView } from '../components/StockComparisonView';
 
@@ -126,8 +124,9 @@ export default function StockAnalysis() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      <div className="relative">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      {/* Hero Section */}
+      <div className="bg-gradient-primary text-white py-16">
         <div className="container">
           <div className="max-w-4xl mx-auto text-center space-y-4 animate-fade-in">
             <div className="flex items-center justify-center gap-3 mb-4">
@@ -167,8 +166,8 @@ export default function StockAnalysis() {
 
           {/* 单股分析 */}
           <TabsContent value="single" className="space-y-8 animate-fade-in">
-            <Card className="max-w-4xl mx-auto shadow-lg card-hover border-2 bg-black">
-              <CardHeader className="bg-black">
+            <Card className="max-w-4xl mx-auto shadow-lg card-hover border-2">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
                 <CardTitle className="text-2xl">股票技术分析</CardTitle>
                 <CardDescription className="text-base">
                   输入股票代码，系统将自动识别市场并进行全面分析
@@ -220,8 +219,8 @@ export default function StockAnalysis() {
                           onClick={() => setSelectedStock(candidate)}
                           className={`p-4 rounded-lg border-2 text-left transition-smooth hover:shadow-md ${
                             selectedStock?.symbol === candidate.symbol
-                              ? 'border-primary bg-gray-900'
-                              : 'border-gray-700 hover:border-primary/50 bg-gray-900'
+                              ? 'border-primary bg-blue-50'
+                              : 'border-gray-200 hover:border-primary/50'
                           }`}
                         >
                           <div className="font-semibold text-lg">
@@ -238,7 +237,7 @@ export default function StockAnalysis() {
 
                 {/* 已选股票 */}
                 {selectedStock && (
-                  <Card className="bg-gray-900 border-2 border-primary/30 animate-fade-in">
+                  <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-primary/30 animate-fade-in">
                     <CardContent className="pt-6">
                       <div className="flex items-start justify-between">
                         <div>
@@ -249,20 +248,17 @@ export default function StockAnalysis() {
                             {selectedStock.exchange} · {selectedStock.market}市场 · {selectedStock.currency}
                           </p>
                         </div>
-                        <div className="flex gap-2">
-                          <AddToWatchlistButton stock={selectedStock} />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedStock(null);
-                              setCandidates([]);
-                              setCurrentAnalysis(null);
-                            }}
-                          >
-                            重新搜索
-                          </Button>
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedStock(null);
+                            setCandidates([]);
+                            setCurrentAnalysis(null);
+                          }}
+                        >
+                          重新搜索
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -407,62 +403,5 @@ export default function StockAnalysis() {
         </Tabs>
       </div>
     </div>
-  );
-}
-
-/**
- * 添加到自选股按钮组件
- */
-function AddToWatchlistButton({ stock }: { stock: StockCandidate }) {
-  const [isAdded, setIsAdded] = useState(false);
-
-  // 检查是否已在自选股中
-  const { data: inWatchlist } = trpc.watchlist.check.useQuery(
-    { symbol: stock.symbol },
-    { enabled: !!stock.symbol }
-  );
-
-  // 添加到自选股
-  const addToWatchlist = trpc.watchlist.add.useMutation({
-    onSuccess: () => {
-      setIsAdded(true);
-      alert('已添加到自选股！');
-    },
-    onError: (error) => {
-      alert(`添加失败：${error.message}`);
-    },
-  });
-
-  const handleAdd = () => {
-    addToWatchlist.mutate({
-      symbol: stock.symbol,
-      nameCn: stock.nameCn || stock.name,
-      market: stock.market,
-      exchange: stock.exchange,
-      currency: stock.currency,
-    });
-  };
-
-  if (inWatchlist || isAdded) {
-    return (
-      <Link href="/watchlist">
-        <Button variant="outline" size="sm">
-          <Star className="w-4 h-4 mr-1 fill-yellow-500 text-yellow-500" />
-          已收藏
-        </Button>
-      </Link>
-    );
-  }
-
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={handleAdd}
-      disabled={addToWatchlist.isPending}
-    >
-      <Star className="w-4 h-4 mr-1" />
-      {addToWatchlist.isPending ? '添加中...' : '添加自选'}
-    </Button>
   );
 }
