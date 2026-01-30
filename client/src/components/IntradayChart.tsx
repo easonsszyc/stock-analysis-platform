@@ -74,6 +74,12 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [hoveredSignal, setHoveredSignal] = useState<TradingSignal | null>(null);
   const [currentPrice, setCurrentPrice] = useState(0);
+  const [marketStatus, setMarketStatus] = useState<{
+    isOpen: boolean;
+    status: string;
+    description: string;
+  } | null>(null);
+  const [dataDate, setDataDate] = useState<string>('');
 
   // 获取分时数据和买卖信号
   useEffect(() => {
@@ -96,6 +102,8 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
         const result = await response.json();
         setData(result.data);
         setSignals(result.signals);
+        setMarketStatus(result.marketStatus || null);
+        setDataDate(result.date || '');
         
         // 更新当前价格（使用最新的数据点）
         if (result.data && result.data.length > 0) {
@@ -389,9 +397,28 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
           ))}
         </div>
         
-        <div className="text-sm text-muted-foreground">
+        <div className="flex items-center gap-4 text-sm">
+          {marketStatus && (
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                "px-2 py-1 rounded text-xs font-medium",
+                marketStatus.isOpen 
+                  ? "bg-green-500/20 text-green-400" 
+                  : "bg-amber-500/20 text-amber-400"
+              )}>
+                {marketStatus.status}
+              </span>
+              {dataDate && (
+                <span className="text-muted-foreground">
+                  数据日期: {dataDate}
+                </span>
+              )}
+            </div>
+          )}
           {signals.length > 0 && (
-            <span>检测到 {signals.length} 个交易信号</span>
+            <span className="text-muted-foreground">
+              检测到 {signals.length} 个交易信号
+            </span>
           )}
         </div>
       </div>

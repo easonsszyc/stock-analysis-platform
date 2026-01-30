@@ -5,6 +5,7 @@ import { Router } from 'express';
 import { getIntradayData } from '../services/intraday-data.service';
 import { analyzeTradingSignals } from '../services/trading-signals.service';
 import { analyzeMultiTimeframeResonance, enrichSignalsWithResonance } from '../services/multi-timeframe.service';
+import { getUSMarketStatus, isHKMarketOpen, isCNMarketOpen } from '../utils/market-status';
 
 const router = Router();
 
@@ -39,11 +40,32 @@ router.get('/data', async (req, res) => {
     // 目前仅返回单一时间周期的信号
     // 在实际应用中，需要同时获取5分钟、15分钟、30分钟的数据进行共振分析
     
+    // 获取市场状态
+    let marketStatus = { isOpen: true, status: '交易中', description: '' };
+    if (marketType === 'US') {
+      marketStatus = getUSMarketStatus();
+    } else if (marketType === 'HK') {
+      const isOpen = isHKMarketOpen();
+      marketStatus = {
+        isOpen,
+        status: isOpen ? '交易中' : '已收盘',
+        description: isOpen ? '港股市场正在交易中，显示实时数据' : '港股市场已收盘，显示上一交易日数据'
+      };
+    } else if (marketType === 'CN') {
+      const isOpen = isCNMarketOpen();
+      marketStatus = {
+        isOpen,
+        status: isOpen ? '交易中' : '已收盘',
+        description: isOpen ? 'A股市场正在交易中，显示实时数据' : 'A股市场已收盘，显示上一交易日数据'
+      };
+    }
+    
     res.json({
       symbol: intradayData.symbol,
       date: intradayData.date,
       data: intradayData.data,
       signals,
+      marketStatus,
     });
   } catch (error) {
     console.error('Error fetching intraday data:', error);

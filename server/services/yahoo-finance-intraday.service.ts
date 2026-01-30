@@ -48,9 +48,14 @@ export async function getUSIntradayDataFromYahoo(
       if (price != null && volume != null) {
         // 转换时间戳为HH:mm格式（美东时间）
         const date = new Date(timestamps[i] * 1000);
-        const hours = date.getUTCHours() - 5; // 转换为美东时间（UTC-5）
-        const minutes = date.getUTCMinutes();
-        const time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        // 使用toLocaleString自动处理美东时区（包括夏令时/冬令时）
+        const etTimeStr = date.toLocaleString('en-US', {
+          timeZone: 'America/New_York',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+        const time = etTimeStr.replace(/^(\d{2}):(\d{2})$/, '$1:$2');
         
         dataPoints.push({
           time,
@@ -63,9 +68,19 @@ export async function getUSIntradayDataFromYahoo(
     
     console.log(`[YahooFinance] Retrieved ${dataPoints.length} data points for ${symbol}`);
     
+    // 获取数据的实际日期（从第一个时间戳提取）
+    const dataDate = timestamps.length > 0 
+      ? new Date(timestamps[0] * 1000).toLocaleString('en-US', {
+          timeZone: 'America/New_York',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).split(',')[0].split('/').reverse().join('-').replace(/(\d{2})-(\d{2})-(\d{4})/, '$3-$1-$2')
+      : new Date().toISOString().split('T')[0];
+    
     return {
       symbol,
-      date: new Date().toISOString().split('T')[0],
+      date: dataDate,
       data: dataPoints,
     };
   } catch (error) {

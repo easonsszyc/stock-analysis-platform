@@ -176,7 +176,7 @@ export function RealtimePriceCard({
         {/* 底部：数据来源和更新时间 */}
         <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
-            <span>数据来源: 腾讯财经</span>
+            <span>数据来源: {quote.market === 'US' ? 'Yahoo Finance' : '腾讯财经'}</span>
             <span>市场: {quote.market === 'US' ? '美股' : quote.market === 'HK' ? '港股' : 'A股'}</span>
             <span className="text-amber-500">⚠️ 数据延迟约5秒</span>
           </div>
