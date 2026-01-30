@@ -17,6 +17,7 @@ interface RealtimeQuote {
   timestamp: string;
   currency: string;
   market: 'US' | 'HK' | 'CN';
+  sessionLabel?: string; // 交易时段标签（盘前价/盘中价/盘后价/收盘价）
 }
 
 interface RealtimePriceCardProps {
@@ -117,6 +118,16 @@ export function RealtimePriceCard({
             <div className="flex items-center gap-3 mb-2">
               <h3 className="text-2xl font-bold">{quote.name || quote.symbol}</h3>
               <span className="text-sm text-muted-foreground">{quote.symbol}</span>
+              {quote.sessionLabel && quote.market === 'US' && (
+                <span className={cn(
+                  "px-2 py-1 rounded text-xs font-medium",
+                  quote.sessionLabel === '盘中价' 
+                    ? "bg-green-500/20 text-green-400" 
+                    : "bg-amber-500/20 text-amber-400"
+                )}>
+                  {quote.sessionLabel}
+                </span>
+              )}
             </div>
 
             <div className="flex items-baseline gap-4">

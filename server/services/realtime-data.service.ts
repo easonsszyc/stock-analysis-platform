@@ -18,6 +18,7 @@ interface RealtimeQuote {
   timestamp: string;
   currency: string;
   market: 'US' | 'HK' | 'CN';
+  sessionLabel?: string; // 交易时段标签（仅美股）
 }
 
 /**
@@ -53,6 +54,10 @@ function parseTencentData(rawData: string, originalSymbol: string): RealtimeQuot
       const change = parseFloat(fields[31]) || 0;
       const changePercent = parseFloat(fields[32]) || 0;
       
+      // 获取美股交易时段标签
+      const { getUSMarketStatus } = require('../utils/market-status');
+      const marketStatus = getUSMarketStatus();
+      
       return {
         symbol: fields[2] || originalSymbol,
         name: fields[1] || '',
@@ -67,6 +72,7 @@ function parseTencentData(rawData: string, originalSymbol: string): RealtimeQuot
         timestamp: fields[30] || '',
         currency: fields[35] || 'USD',
         market: 'US',
+        sessionLabel: marketStatus.sessionLabel,
       };
     } else if (market === 'HK') {
       // 港股字段位置

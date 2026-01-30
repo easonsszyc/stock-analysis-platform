@@ -521,3 +521,13 @@
 - [x] TypeScript编译通过（0错误）
 - [x] 服务器重启成功
 - [ ] 保存检查点并交付
+
+## 优化任务 - 美股价格显示交易时段标注（用户要求）
+- [x] 分析当前实现：实时价格来源、分时图数据范围
+- [x] 扩展market-status.ts，添加getUSMarketSession()函数
+- [x] 修改getUSMarketStatus()，返回session和sessionLabel字段
+- [x] 修改realtime-data.service.ts，美股数据添加sessionLabel字段
+- [x] 修改RealtimePriceCard，显示交易时段标签（盘前价/盘中价/盘后价/收盘价）
+- [x] TypeScript编译通过（0错误）
+- [x] 服务器重启成功
+- [ ] 保存检查点并交付
