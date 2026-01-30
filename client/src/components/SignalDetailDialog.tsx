@@ -19,6 +19,11 @@ interface SignalDetail {
   takeProfit?: number;
   riskRewardRatio?: number;
   confidence?: "high" | "medium" | "low";
+  resonance?: {
+    level: number; // 共振级别，如 2 表示 2/3
+    timeframes: string[]; // 参与共振的时间周期
+    strength: number; // 共振强度评分 0-100
+  };
 }
 
 interface SignalDetailDialogProps {
@@ -103,6 +108,43 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
               ))}
             </ul>
           </div>
+
+          {/* 多周期共振信息 */}
+          {signal.resonance && signal.resonance.level >= 2 && (
+            <div className="space-y-2 bg-gradient-to-r from-primary/10 to-primary/5 p-4 rounded-lg border border-primary/20">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                多周期共振信号
+                <Badge className="ml-auto bg-primary/20 text-primary border-primary/50">
+                  {signal.resonance.level}/{signal.resonance.timeframes.length}
+                </Badge>
+              </h3>
+              <div className="text-sm text-muted-foreground">
+                <p className="mb-2">
+                  当前信号在 <span className="font-semibold text-foreground">{signal.resonance.level}</span> 个时间周期上出现共振，信号可靠性较高。
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {signal.resonance.timeframes.map((tf, index) => (
+                    <Badge key={index} variant="outline" className="bg-background/50">
+                      {tf}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="text-xs">共振强度：</span>
+                  <div className="flex-1 bg-background/50 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="h-full bg-primary transition-all" 
+                      style={{ width: `${signal.resonance.strength}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-semibold">{signal.resonance.strength}%</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 技术指标 */}
           {signal.indicators && (

@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import { getRealtimeQuote } from "./services/realtime-data.service";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -75,28 +76,34 @@ export const appRouter = router({
     getQuotes: protectedProcedure
       .query(async ({ ctx }) => {
         const watchlist = await db.getUserWatchlist(ctx.user.id);
-        const symbols = watchlist.map((item: any) => item.symbol);
         
-        if (symbols.length === 0) {
+        if (watchlist.length === 0) {
           return [];
         }
 
         // 批量获取股票价格
         const quotes = await Promise.all(
-          symbols.map(async (symbol: string) => {
+          watchlist.map(async (item: any) => {
             try {
-              const response = await fetch(`/api/stock/quote?symbol=${encodeURIComponent(symbol)}`);
-              const result = await response.json();
+              const quote = await getRealtimeQuote(item.symbol, item.market);
               
-              if (result.success) {
+              if (quote) {
                 return {
-                  symbol,
-                  ...result.data,
+                  symbol: item.symbol,
+                  name: quote.name,
+                  price: quote.currentPrice,
+                  change: quote.change,
+                  changePercent: quote.changePercent,
+                  volume: quote.volume,
+                  market: quote.market,
+                  // TODO: 添加买卖信号
+                  signal: undefined,
+                  signalStrength: undefined,
                 };
               }
               return null;
             } catch (error) {
-              console.error(`Failed to fetch quote for ${symbol}:`, error);
+              console.error(`Failed to fetch quote for ${item.symbol}:`, error);
               return null;
             }
           })

@@ -35,6 +35,11 @@ interface TradingSignal {
   reasons: string[];
   stopLoss?: number;
   target?: number;
+  resonance?: {
+    level: number; // 共振级别，如 2 表示 2/3
+    timeframes: string[]; // 参与共振的时间周期
+    strength: number; // 共振强度评分 0-100
+  };
 }
 
 interface IntradayChartProps {
@@ -201,21 +206,45 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
       const dataPoint = chartData.find(d => d.time === signal.time);
       if (!dataPoint) return null;
       
+      // 判断是否为共振信号（高亮显示）
+      const isResonance = signal.resonance && signal.resonance.level >= 2;
+      const fillColor = signal.type === 'buy' ? '#ef4444' : '#22c55e';
+      
       return (
-        <ReferenceDot
-          key={index}
-          x={signal.time}
-          y={signal.price}
-          r={6}
-          fill={signal.type === 'buy' ? '#ef4444' : '#22c55e'}
-          stroke="#fff"
-          strokeWidth={2}
-          onClick={() => {
-            setSelectedSignal(signal);
-            setDialogOpen(true);
-          }}
-          style={{ cursor: 'pointer' }}
-        />
+        <>
+          <ReferenceDot
+            key={index}
+            x={signal.time}
+            y={signal.price}
+            r={isResonance ? 8 : 6}
+            fill={fillColor}
+            stroke="#fff"
+            strokeWidth={isResonance ? 3 : 2}
+            onClick={() => {
+              setSelectedSignal(signal);
+              setDialogOpen(true);
+            }}
+            style={{ cursor: 'pointer' }}
+          />
+          {/* 共振信号显示外圈 */}
+          {isResonance && (
+            <ReferenceDot
+              key={`${index}-outer`}
+              x={signal.time}
+              y={signal.price}
+              r={12}
+              fill="none"
+              stroke={fillColor}
+              strokeWidth={2}
+              strokeDasharray="3 3"
+              onClick={() => {
+                setSelectedSignal(signal);
+                setDialogOpen(true);
+              }}
+              style={{ cursor: 'pointer' }}
+            />
+          )}
+        </>
       );
     });
   };
