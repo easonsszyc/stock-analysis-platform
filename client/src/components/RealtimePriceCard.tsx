@@ -109,7 +109,7 @@ export function RealtimePriceCard({
   const borderColor = isPositive ? 'border-red-500/30' : 'border-green-500/30';
 
   return (
-    <Card className="neon-border bg-card/80 backdrop-blur-sm transition-all duration-300">
+    <Card className="border-border/50 bg-card/80 backdrop-blur-sm transition-all duration-300 shadow-lg shadow-black/20">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           {/* 左侧：价格信息 */}

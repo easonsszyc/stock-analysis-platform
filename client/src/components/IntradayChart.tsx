@@ -233,7 +233,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
   }
 
   return (
-    <Card className="p-6 neon-border bg-card/80 backdrop-blur-sm">
+    <Card className="p-6 border-border/50 bg-card/80 backdrop-blur-sm shadow-lg shadow-black/20">
       {/* 时间周期切换器 */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
