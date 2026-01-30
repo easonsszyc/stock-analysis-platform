@@ -98,6 +98,24 @@ export async function getIntradayData(
 
     const dataPoints = parseIntradayData(stockData.data.data);
     
+    // 如果只有一个数据点（通常是美股收盘后），使用qt数据填充
+    if (dataPoints.length === 1 && market === 'US') {
+      const qtData = jsonData.data[tencentSymbol].qt[tencentSymbol];
+      if (qtData && qtData.length > 3) {
+        // qt数据包含实时价格信息
+        const currentPrice = parseFloat(qtData[3]) || dataPoints[0].price;
+        const timestamp = qtData[30] || '';
+        
+        // 生成一个简单的数据点显示当前价格
+        dataPoints[0] = {
+          time: timestamp ? timestamp.split(' ')[1].substring(0, 5) : dataPoints[0].time,
+          price: currentPrice,
+          volume: dataPoints[0].volume,
+          amount: dataPoints[0].amount,
+        };
+      }
+    }
+    
     const result = {
       symbol,
       date: stockData.data.date || new Date().toISOString().split('T')[0],

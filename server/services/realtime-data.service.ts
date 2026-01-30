@@ -47,18 +47,23 @@ function parseTencentData(rawData: string, originalSymbol: string): RealtimeQuot
 
     // 根据市场类型解析不同的字段位置
     if (market === 'US') {
-      // 美股字段位置
+      // 美股字段位置（测试验证后的正确映射）
+      const currentPrice = parseFloat(fields[3]) || 0;
+      const previousClose = parseFloat(fields[4]) || 0;
+      const change = parseFloat(fields[31]) || 0;
+      const changePercent = parseFloat(fields[32]) || 0;
+      
       return {
         symbol: fields[2] || originalSymbol,
         name: fields[1] || '',
-        currentPrice: parseFloat(fields[3]) || 0,
-        previousClose: parseFloat(fields[4]) || 0,
+        currentPrice,
+        previousClose,
         open: parseFloat(fields[5]) || 0,
         high: parseFloat(fields[33]) || 0,
         low: parseFloat(fields[34]) || 0,
         volume: parseInt(fields[6]) || 0,
-        change: parseFloat(fields[31]) || 0,
-        changePercent: parseFloat(fields[32]) || 0,
+        change,
+        changePercent,
         timestamp: fields[30] || '',
         currency: fields[35] || 'USD',
         market: 'US',
