@@ -345,7 +345,7 @@ export default function StrategyLab() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-sm text-muted-foreground mb-1">总收益率</div>
-                    <div className={`text-2xl font-bold ${result.totalReturn >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    <div className={`text-2xl font-bold ${result.totalReturn >= 0 ? 'text-red-500' : 'text-green-500'}`}>
                       {result.totalReturn >= 0 ? '+' : ''}{(result.totalReturn * 100).toFixed(2)}%
                     </div>
                   </CardContent>
@@ -429,19 +429,19 @@ export default function StrategyLab() {
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">盈利交易</div>
-                      <div className="text-lg font-semibold text-green-500">{result.winningTrades}</div>
+                      <div className="text-lg font-semibold text-red-500">{result.winningTrades}</div>
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">亏损交易</div>
-                      <div className="text-lg font-semibold text-red-500">{result.losingTrades}</div>
+                      <div className="text-lg font-semibold text-green-500">{result.losingTrades}</div>
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">平均盈利</div>
-                      <div className="text-lg font-semibold text-green-500">+{result.avgProfit.toFixed(2)}</div>
+                      <div className="text-lg font-semibold text-red-500">+{result.avgProfit.toFixed(2)}</div>
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">平均亏损</div>
-                      <div className="text-lg font-semibold text-red-500">{result.avgLoss.toFixed(2)}</div>
+                      <div className="text-lg font-semibold text-green-500">{result.avgLoss.toFixed(2)}</div>
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">盈亏比</div>
@@ -485,7 +485,7 @@ export default function StrategyLab() {
                             <td className="text-right p-2">{trade.shares}</td>
                             <td className={`text-right p-2 font-semibold ${
                               trade.profit === null ? '' :
-                              trade.profit >= 0 ? 'text-green-500' : 'text-red-500'
+                              trade.profit >= 0 ? 'text-red-500' : 'text-green-500'
                             }`}>
                               {trade.profit === null ? '持仓中' : 
                                 `${trade.profit >= 0 ? '+' : ''}${trade.profit.toFixed(2)}`}
