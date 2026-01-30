@@ -4,9 +4,17 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import type { StockAnalysis } from '@shared/stock-types';
 import { StockChart } from './StockChart';
+import { TradingStrategyCard } from './TradingStrategyCard';
+import { RealtimePriceCard } from './RealtimePriceCard';
+import { IntradayChart } from './IntradayChart';
 
 interface StockAnalysisViewProps {
-  analysis: StockAnalysis;
+  analysis: StockAnalysis & {
+    tradingStrategies?: {
+      scalping: any;
+      swing: any;
+    };
+  };
 }
 
 export function StockAnalysisView({ analysis }: StockAnalysisViewProps) {
@@ -71,6 +79,20 @@ export function StockAnalysisView({ analysis }: StockAnalysisViewProps) {
 
   return (
     <div className="space-y-6">
+      {/* 实时价格卡片 */}
+      <RealtimePriceCard 
+        symbol={stockInfo.symbol} 
+        market={stockInfo.market || 'US'}
+        autoRefresh={true}
+        refreshInterval={30}
+      />
+
+      {/* 分时走势图和智能买卖点 */}
+      <IntradayChart 
+        symbol={stockInfo.symbol}
+        market={stockInfo.market || 'US'}
+      />
+
       {/* 股票基本信息 */}
       <Card>
         <CardHeader>
@@ -322,6 +344,27 @@ export function StockAnalysisView({ analysis }: StockAnalysisViewProps) {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* 交易策略推荐 */}
+      {analysis.tradingStrategies && (
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold">交易策略推荐</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <TradingStrategyCard
+              title="剥头皮策略"
+              description="适合日内短线交易，快进快出"
+              strategy={analysis.tradingStrategies.scalping}
+              icon="scalping"
+            />
+            <TradingStrategyCard
+              title="波段交易策略"
+              description="适合中短期持仓，捕捉趋势波段"
+              strategy={analysis.tradingStrategies.swing}
+              icon="swing"
+            />
+          </div>
+        </div>
       )}
     </div>
   );

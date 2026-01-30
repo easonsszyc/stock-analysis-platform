@@ -8,6 +8,13 @@
       "when": 1769737720458,
       "tag": "0000_complex_stryfe",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1769750107388,
+      "tag": "0001_stale_patriot",
+      "breakpoints": true
     }
   ]
 }

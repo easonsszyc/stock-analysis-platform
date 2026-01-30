@@ -11,13 +11,10 @@ export interface StockSearchResult {
 }
 
 export class StockSearchService {
-  private quotaExhaustedDetected = false;
-
   /**
    * 智能搜索股票 - 自动识别市场并返回候选列表
    */
   async searchStock(query: string): Promise<StockSearchResult[]> {
-    this.quotaExhaustedDetected = false;
     const candidates: StockSearchResult[] = [];
     
     // 清理输入
@@ -51,7 +48,7 @@ export class StockSearchService {
     }
     
     // 如果没有找到任何候选，尝试所有市场
-    if (candidates.length === 0 && !this.quotaExhaustedDetected) {
+    if (candidates.length === 0) {
       const usResult = await this.tryFetchStock(cleanQuery, 'US');
       if (usResult) candidates.push(usResult);
       
@@ -65,11 +62,6 @@ export class StockSearchService {
       if (szResult) candidates.push(szResult);
     }
     
-    // 如果检测到配额耗尽，抛出特定错误
-    if (this.quotaExhaustedDetected && candidates.length === 0) {
-      throw new Error('API_QUOTA_EXHAUSTED: Yahoo Finance API quota has been exhausted. Please try again later.');
-    }
-    
     return candidates;
   }
 
@@ -80,8 +72,6 @@ export class StockSearchService {
     try {
       const region = market === 'CN' ? 'CN' : market === 'HK' ? 'HK' : 'US';
       
-      console.log(`[StockSearch] Trying to fetch ${symbol} in ${market} market (region: ${region})`);
-      
       const response: any = await callDataApi('YahooFinance/get_stock_chart', {
         query: {
           symbol: symbol,
@@ -91,15 +81,10 @@ export class StockSearchService {
           includeAdjustedClose: 'true'
         }
       });
-      
-      console.log(`[StockSearch] API response for ${symbol}:`, JSON.stringify(response).substring(0, 300));
 
       if (!response || !response.chart || !response.chart.result || response.chart.result.length === 0) {
-        console.log(`[StockSearch] No valid data for ${symbol}`);
         return null;
       }
-      
-      console.log(`[StockSearch] Successfully fetched ${symbol}`);
 
       const result = response.chart.result[0];
       const meta = result.meta;
@@ -116,13 +101,10 @@ export class StockSearchService {
         currency: meta.currency
       };
     } catch (error: any) {
-      console.error(`[StockSearch] Error fetching ${symbol}:`, error.message);
-      
-      // 检测是否为API配额耗尽错误
+      // 检测API配额耗尽错误
       if (error.message && error.message.includes('usage exhausted')) {
-        this.quotaExhaustedDetected = true;
+        throw new Error('API_QUOTA_EXHAUSTED');
       }
-      
       return null;
     }
   }
