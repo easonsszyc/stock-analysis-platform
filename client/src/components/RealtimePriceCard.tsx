@@ -40,12 +40,16 @@ export function RealtimePriceCard({
 
   const fetchQuote = async () => {
     try {
+      setLoading(true);
+      // 使用完整的URL路径
+      const baseUrl = window.location.origin;
       const response = await fetch(
-        `/api/realtime/quote?symbol=${encodeURIComponent(symbol)}&market=${encodeURIComponent(market)}`
+        `${baseUrl}/api/realtime/quote?symbol=${encodeURIComponent(symbol)}&market=${encodeURIComponent(market)}`
       );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch realtime quote');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch realtime quote');
       }
 
       const data: RealtimeQuote = await response.json();
