@@ -32,7 +32,10 @@ export interface TradingSignal {
  * 分析买卖信号
  */
 export function analyzeTradingSignals(data: PriceData[]): TradingSignal[] {
-  if (data.length < 30) {
+  console.log(`[Trading Signals] Analyzing ${data.length} data points`);
+  
+  if (data.length < 20) {
+    console.log('[Trading Signals] Not enough data points (< 20)');
     return [];
   }
 
@@ -172,6 +175,7 @@ export function analyzeTradingSignals(data: PriceData[]): TradingSignal[] {
     }
   }
   
+  console.log(`[Trading Signals] Generated ${signals.length} signals`);
   return signals;
 }
 

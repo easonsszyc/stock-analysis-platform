@@ -384,3 +384,12 @@
 - [x] 定位RealtimePriceCard组件的fetchQuote函数
 - [x] 修复API调用路径，使用完整URL而不是相对路径
 - [x] 测试实时价格显示功能（页面正常加载，没有控制台错误）
+
+## 紧急问题 - 当日交易信号不显示
+
+- [x] 测试股票分析页面，查看是否有交易信号显示
+- [x] 检查后端信号生成逻辑（trading-signals.service.ts）
+- [x] 检查前端信号显示逻辑（IntradayChart.tsx）
+- [x] 查看控制台日志和网络请求，定位问题原因（fetch路径错误）
+- [x] 修复IntradayChart组件的API调用路径，使用完整URL
+- [x] 测试修复后的交易信号功能（分时图正常加载，信号生成逻辑已优化）

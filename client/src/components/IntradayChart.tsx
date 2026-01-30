@@ -80,7 +80,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
         const cleanSymbol = symbol.split('.')[0];
         
         const response = await fetch(
-          `/api/intraday/data?symbol=${cleanSymbol}&market=${market}`
+          `${window.location.origin}/api/intraday/data?symbol=${cleanSymbol}&market=${market}`
         );
         
         if (!response.ok) {
