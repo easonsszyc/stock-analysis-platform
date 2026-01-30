@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import stockRoutes from "../routes/stock.routes";
+import realtimeRoutes from "../routes/realtime.routes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -38,6 +39,8 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Stock analysis API routes
   app.use("/api/stock", stockRoutes);
+  // Realtime quote API routes
+  app.use("/api/realtime", realtimeRoutes);
   // tRPC API
   app.use(
     "/api/trpc",

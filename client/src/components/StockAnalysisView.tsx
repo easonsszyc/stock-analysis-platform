@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle2, Info } fr
 import type { StockAnalysis } from '@shared/stock-types';
 import { StockChart } from './StockChart';
 import { TradingStrategyCard } from './TradingStrategyCard';
+import { RealtimePriceCard } from './RealtimePriceCard';
 
 interface StockAnalysisViewProps {
   analysis: StockAnalysis & {
@@ -77,6 +78,14 @@ export function StockAnalysisView({ analysis }: StockAnalysisViewProps) {
 
   return (
     <div className="space-y-6">
+      {/* 实时价格卡片 */}
+      <RealtimePriceCard 
+        symbol={stockInfo.symbol} 
+        market={stockInfo.market || 'US'}
+        autoRefresh={true}
+        refreshInterval={30}
+      />
+
       {/* 股票基本信息 */}
       <Card>
         <CardHeader>
