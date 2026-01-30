@@ -11,7 +11,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceDot,
+  Scatter,
   Legend,
 } from 'recharts';
 import { Card } from '@/components/ui/card';
@@ -40,6 +40,11 @@ interface TradingSignal {
     timeframes: string[]; // 参与共振的时间周期
     strength: number; // 共振强度评分 0-100
   };
+  // 配对信息
+  tradeId?: string; // 交易ID，用于匹配买入和卖出
+  pairedSignal?: TradingSignal; // 配对的信号（买入对应卖出，反之亦然）
+  profitLoss?: number; // 盈亏金额
+  profitLossPercent?: number; // 盈亏百分比
 }
 
 interface IntradayChartProps {
@@ -176,6 +181,77 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
   };
 
   const chartData = aggregateData(data, timeFrame);
+  
+  // 买入卖出信号配对算法（FIFO先进先出）
+  const pairSignals = (signals: TradingSignal[]): TradingSignal[] => {
+    const pairedSignals: TradingSignal[] = [];
+    const openBuySignals: TradingSignal[] = []; // 未平仓的买入信号
+    
+    signals.forEach((signal, index) => {
+      if (signal.type === 'buy') {
+        // 买入信号：分配交易ID并加入未平仓列表
+        const buySignal = {
+          ...signal,
+          tradeId: `trade-${index}`,
+        };
+        openBuySignals.push(buySignal);
+        pairedSignals.push(buySignal);
+      } else if (signal.type === 'sell' && openBuySignals.length > 0) {
+        // 卖出信号：匹配最早的未平仓买入信号（FIFO）
+        const buySignal = openBuySignals.shift()!;
+        const profitLoss = signal.price - buySignal.price;
+        const profitLossPercent = (profitLoss / buySignal.price) * 100;
+        
+        const sellSignal = {
+          ...signal,
+          tradeId: buySignal.tradeId,
+          pairedSignal: buySignal,
+          profitLoss,
+          profitLossPercent,
+        };
+        
+        // 更新买入信号的配对信息
+        const buyIndex = pairedSignals.findIndex(s => s.tradeId === buySignal.tradeId);
+        if (buyIndex !== -1) {
+          pairedSignals[buyIndex] = {
+            ...pairedSignals[buyIndex],
+            pairedSignal: sellSignal,
+            profitLoss,
+            profitLossPercent,
+          };
+        }
+        
+        pairedSignals.push(sellSignal);
+      } else {
+        // 其他信号（hold或未匹配的sell）
+        pairedSignals.push(signal);
+      }
+    });
+    
+    return pairedSignals;
+  };
+  
+  const pairedSignals = pairSignals(signals);
+  
+  // 将信号数据合并到chartData中
+  const chartDataWithSignals = chartData.map(point => {
+    const signal = pairedSignals.find(s => s.time === point.time);
+    return {
+      ...point,
+      buySignal: signal?.type === 'buy' ? signal.price : null,
+      sellSignal: signal?.type === 'sell' ? signal.price : null,
+      signal: signal || null,
+    };
+  });
+  
+  // 调试日志
+  console.log('[IntradayChart] Data prepared:', {
+    totalDataPoints: chartDataWithSignals.length,
+    totalSignals: signals.length,
+    buySignals: chartDataWithSignals.filter(d => d.buySignal !== null).length,
+    sellSignals: chartDataWithSignals.filter(d => d.sellSignal !== null).length,
+    sampleData: chartDataWithSignals.slice(0, 5),
+  });
 
   // 自定义Tooltip
   const CustomTooltip = ({ active, payload }: any) => {
@@ -200,55 +276,73 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
     );
   };
 
-  // 渲染买卖信号标注
-  const renderSignals = () => {
-    return signals.map((signal, index) => {
-      const dataPoint = chartData.find(d => d.time === signal.time);
-      if (!dataPoint) return null;
-      
-      // 判断是否为共振信号（高亮显示）
-      const isResonance = signal.resonance && signal.resonance.level >= 2;
-      // 中国市场习惯：红色买入、绿色卖出
-      const fillColor = signal.type === 'buy' ? '#ef4444' : '#22c55e';
-      const strokeColor = signal.type === 'buy' ? '#dc2626' : '#16a34a';
-      
-      return (
-        <>
-          <ReferenceDot
-            key={index}
-            x={signal.time}
-            y={signal.price}
-            r={isResonance ? 10 : 7}
-            fill={fillColor}
-            stroke={strokeColor}
-            strokeWidth={isResonance ? 3 : 2.5}
+  // 自定义信号点渲染函数
+  const renderSignalDot = (props: any) => {
+    const { cx, cy, payload } = props;
+    if (!payload.signal) return <g />;
+    
+    const signal = payload.signal;
+    const isResonance = signal.resonance && signal.resonance.level >= 2;
+    const fillColor = signal.type === 'buy' ? '#ef4444' : '#22c55e';
+    const strokeColor = signal.type === 'buy' ? '#dc2626' : '#16a34a';
+    const radius = isResonance ? 10 : 7;
+    
+    // 提取交易ID的数字部分（例如 "trade-5" -> "5"）
+    const tradeNumber = signal.tradeId ? signal.tradeId.split('-')[1] : '';
+    
+    return (
+      <g>
+        <circle
+          cx={cx}
+          cy={cy}
+          r={radius}
+          fill={fillColor}
+          stroke={strokeColor}
+          strokeWidth={isResonance ? 3 : 2.5}
+          opacity={0.9}
+          style={{ cursor: 'pointer' }}
+          onClick={() => {
+            setSelectedSignal(signal);
+            setDialogOpen(true);
+          }}
+        />
+        {isResonance && (
+          <circle
+            cx={cx}
+            cy={cy}
+            r={15}
+            fill="none"
+            stroke={fillColor}
+            strokeWidth={2.5}
+            strokeDasharray="4 4"
+            opacity={0.8}
+            style={{ cursor: 'pointer' }}
             onClick={() => {
               setSelectedSignal(signal);
               setDialogOpen(true);
             }}
-            style={{ cursor: 'pointer', opacity: 0.9 }}
           />
-          {/* 共振信号显示外圈（更大、更醒目） */}
-          {isResonance && (
-            <ReferenceDot
-              key={`${index}-outer`}
-              x={signal.time}
-              y={signal.price}
-              r={15}
-              fill="none"
-              stroke={fillColor}
-              strokeWidth={2.5}
-              strokeDasharray="4 4"
-              onClick={() => {
-                setSelectedSignal(signal);
-                setDialogOpen(true);
-              }}
-              style={{ cursor: 'pointer', opacity: 0.8 }}
-            />
-          )}
-        </>
-      );
-    });
+        )}
+        {/* 显示交易ID数字 */}
+        {tradeNumber && (
+          <text
+            x={cx}
+            y={cy - radius - 8}
+            textAnchor="middle"
+            fill={fillColor}
+            fontSize="10"
+            fontWeight="bold"
+            style={{ cursor: 'pointer' }}
+            onClick={() => {
+              setSelectedSignal(signal);
+              setDialogOpen(true);
+            }}
+          >
+            {tradeNumber}
+          </text>
+        )}
+      </g>
+    );
   };
 
   if (loading) {
@@ -300,7 +394,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
 
       {/* 走势图 */}
       <ResponsiveContainer width="100%" height={400}>
-        <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+        <ComposedChart data={chartDataWithSignals} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#333" />
           <XAxis
             dataKey="time"
@@ -315,7 +409,6 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
             tickFormatter={(value) => value.toFixed(2)}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Legend />
           <Line
             type="monotone"
             dataKey="price"
@@ -325,7 +418,20 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
             name="价格"
             isAnimationActive={false}
           />
-          {renderSignals()}
+          <Scatter
+            dataKey="buySignal"
+            fill="#ef4444"
+            shape={renderSignalDot as any}
+            isAnimationActive={false}
+            legendType="none"
+          />
+          <Scatter
+            dataKey="sellSignal"
+            fill="#22c55e"
+            shape={renderSignalDot as any}
+            isAnimationActive={false}
+            legendType="none"
+          />
         </ComposedChart>
       </ResponsiveContainer>
 

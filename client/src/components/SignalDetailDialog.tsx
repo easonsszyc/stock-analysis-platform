@@ -24,6 +24,11 @@ interface SignalDetail {
     timeframes: string[]; // 参与共振的时间周期
     strength: number; // 共振强度评分 0-100
   };
+  // 配对信息
+  tradeId?: string;
+  pairedSignal?: SignalDetail;
+  profitLoss?: number;
+  profitLossPercent?: number;
 }
 
 interface SignalDetailDialogProps {
@@ -93,6 +98,43 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
+          {/* 配对交易信息 */}
+          {signal.tradeId && signal.pairedSignal && (
+            <div className="space-y-2 bg-gradient-to-r from-blue-500/10 to-blue-500/5 p-4 rounded-lg border border-blue-500/20">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                配对交易信息
+                <Badge className="ml-auto bg-blue-500/20 text-blue-400 border-blue-500/50">
+                  交易 #{signal.tradeId.split('-')[1]}
+                </Badge>
+              </h3>
+              <div className="text-sm space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">买入价格：</span>
+                  <span className="font-semibold text-red-400">{isBuy ? signal.price.toFixed(2) : signal.pairedSignal.price.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">卖出价格：</span>
+                  <span className="font-semibold text-green-400">{isBuy ? (signal.pairedSignal.price.toFixed(2)) : signal.price.toFixed(2)}</span>
+                </div>
+                {signal.profitLoss !== undefined && (
+                  <>
+                    <div className="h-px bg-border my-2" />
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">盈亏：</span>
+                      <span className={`font-bold text-lg ${signal.profitLoss >= 0 ? 'text-red-500' : 'text-green-500'}`}>
+                        {signal.profitLoss >= 0 ? '+' : ''}{signal.profitLoss.toFixed(2)}
+                        <span className="text-sm ml-1">({signal.profitLossPercent?.toFixed(2)}%)</span>
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          
           {/* 信号原因 */}
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
