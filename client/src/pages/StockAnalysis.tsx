@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, TrendingUp, ArrowUpDown, Loader2, Sparkles, BarChart3 } from 'lucide-react';
+import { Search, TrendingUp, ArrowUpDown, Loader2, Sparkles, BarChart3, Moon, Sun } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 import { StockAnalysisView } from '../components/StockAnalysisView';
 import { StockComparisonView } from '../components/StockComparisonView';
 
@@ -123,10 +124,24 @@ export default function StockAnalysis() {
     }
   };
 
+  const { theme, toggleTheme } = useTheme();
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Hero Section */}
-      <div className="bg-gradient-primary text-white py-16">
+      <div className="bg-gradient-primary text-white py-16 relative">
+        {/* 主题切换按钮 */}
+        <button
+          onClick={toggleTheme}
+          className="absolute top-4 right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300 backdrop-blur-sm"
+          aria-label="切换主题"
+        >
+          {theme === 'dark' ? (
+            <Sun className="w-5 h-5 text-yellow-300" />
+          ) : (
+            <Moon className="w-5 h-5 text-blue-200" />
+          )}
+        </button>
         <div className="container">
           <div className="max-w-4xl mx-auto text-center space-y-4 animate-fade-in">
             <div className="flex items-center justify-center gap-3 mb-4">

@@ -3,6 +3,7 @@ import { stockDataService } from '../services/stock-data.service';
 import { technicalAnalysisService } from '../services/technical-analysis.service';
 import { stockComparisonService } from '../services/stock-comparison.service';
 import { stockSearchService } from '../services/stock-search.service';
+import { tradingStrategyService } from '../services/trading-strategy.service';
 import type {
   AnalyzeStockRequest,
   CompareStocksRequest,
@@ -134,11 +135,21 @@ router.post('/analyze', async (req, res) => {
         reasoning
       }
     };
+    
+    // 生成交易策略推荐
+    const scalpingStrategy = tradingStrategyService.evaluateScalpingStrategy(analysis);
+    const swingStrategy = tradingStrategyService.evaluateSwingStrategy(analysis);
 
     res.json({
       success: true,
-      data: analysis
-    } as ApiResponse<StockAnalysis>);
+      data: {
+        ...analysis,
+        tradingStrategies: {
+          scalping: scalpingStrategy,
+          swing: swingStrategy
+        }
+      }
+    } as ApiResponse<any>);
   } catch (error: any) {
     console.error('Analyze stock error:', error);
     res.status(500).json({
