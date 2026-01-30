@@ -13,14 +13,12 @@ class StockDataService {
     if (this.apiClient) return this.apiClient;
     
     try {
-      // 动态导入API客户端（仅在Node.js环境中）
-      if (typeof require !== 'undefined') {
-        const apiPath = '/opt/.manus/.sandbox-runtime';
-        const { ApiClient } = require(apiPath + '/data_api');
-        this.apiClient = new ApiClient();
-      }
+      // 使用项目内置的dataApi帮助函数
+      const { callDataApi } = await import('../_core/dataApi.js');
+      this.apiClient = { callDataApi };
     } catch (error) {
       console.error('Failed to initialize API client:', error);
+      throw new Error('无法初始化股票数据API客户端');
     }
     
     return this.apiClient;
@@ -77,13 +75,13 @@ class StockDataService {
     const region = market === 'CN' ? 'CN' : market === 'HK' ? 'HK' : 'US';
 
     try {
-      const response = await apiClient.call_api('YahooFinance/get_stock_chart', {
+      const response = await apiClient.callDataApi('YahooFinance/get_stock_chart', {
         query: {
           symbol: formattedSymbol,
           region: region,
           interval: '1d',
           range: period,
-          includeAdjustedClose: true,
+          includeAdjustedClose: 'true',
           events: 'div,split'
         }
       });
