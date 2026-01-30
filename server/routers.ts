@@ -115,6 +115,52 @@ export const appRouter = router({
 
   // Price alerts management
   priceAlerts: router({
+    // Upsert price alert (create or update)
+    upsert: protectedProcedure
+      .input(
+        z.object({
+          symbol: z.string(),
+          priceUpper: z.number().nullable(),
+          priceLower: z.number().nullable(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        // 先获取watchlist项
+        const watchlistItem = await db.getWatchlistBySymbol(ctx.user.id, input.symbol);
+        if (!watchlistItem) {
+          throw new Error('股票不在自选股列表中');
+        }
+
+        // 删除旧的预警
+        await db.deletePriceAlertsBySymbol(ctx.user.id, input.symbol);
+
+        // 创建新的预警
+        if (input.priceUpper !== null) {
+          await db.createPriceAlert({
+            userId: ctx.user.id,
+            watchlistId: watchlistItem.id,
+            symbol: input.symbol,
+            alertType: 'above',
+            targetPrice: input.priceUpper.toString(),
+            isActive: 1,
+            isTriggered: 0,
+          });
+        }
+
+        if (input.priceLower !== null) {
+          await db.createPriceAlert({
+            userId: ctx.user.id,
+            watchlistId: watchlistItem.id,
+            symbol: input.symbol,
+            alertType: 'below',
+            targetPrice: input.priceLower.toString(),
+            isActive: 1,
+            isTriggered: 0,
+          });
+        }
+
+        return { success: true };
+      }),
     // Get price alerts for a stock
     list: protectedProcedure
       .input(z.object({ symbol: z.string() }))

@@ -3,7 +3,7 @@
  * 实时监控用户关注的股票价格变化和买卖信号
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Trash2, TrendingUp, TrendingDown, Bell, BellOff, RefreshCw, Plus } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { Link } from 'wouter';
+import { PriceAlertDialog } from '@/components/PriceAlertDialog';
+import { requestNotificationPermission, sendPriceAlertNotification, hasNotificationPermission } from '@/lib/notifications';
 
 interface WatchlistStock {
   id: number;
@@ -34,11 +36,26 @@ interface StockQuote {
   signalStrength?: number;
 }
 
+interface PriceAlert {
+  id: number;
+  symbol: string;
+  alertType: 'above' | 'below';
+  targetPrice: string;
+  isActive: number;
+  isTriggered: number;
+}
+
 export default function Watchlist() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newSymbol, setNewSymbol] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false);
+  const [selectedStock, setSelectedStock] = useState<{ symbol: string; price: number } | null>(null);
+  const [notificationEnabled, setNotificationEnabled] = useState(hasNotificationPermission());
+
+  // 用于跟踪已触发的预警，避免重复通知
+  const triggeredAlertsRef = useRef<Set<number>>(new Set());
 
   // 获取自选股列表
   const { data: watchlist = [], refetch: refetchWatchlist } = trpc.watchlist.list.useQuery();
@@ -46,11 +63,15 @@ export default function Watchlist() {
   // 获取实时行情
   const { data: quotes = [], refetch: refetchQuotes, isLoading: quotesLoading } = trpc.watchlist.getQuotes.useQuery();
 
+  // 获取所有价格预警
+  const { data: allAlerts = [], refetch: refetchAlerts } = trpc.priceAlerts.listAll.useQuery();
+
   // 删除自选股
   const removeMutation = trpc.watchlist.remove.useMutation({
     onSuccess: () => {
       refetchWatchlist();
       refetchQuotes();
+      refetchAlerts();
     },
   });
 
@@ -58,15 +79,74 @@ export default function Watchlist() {
   const addMutation = trpc.watchlist.add.useMutation({
     onSuccess: () => {
       refetchWatchlist();
-      refetchQuotes();
       setAddDialogOpen(false);
       setNewSymbol('');
-      alert('添加成功！');
-    },
-    onError: (error) => {
-      alert(`添加失败：${error.message}`);
     },
   });
+
+  // 保存价格预警
+  const upsertAlertMutation = trpc.priceAlerts.upsert.useMutation({
+    onSuccess: () => {
+      refetchAlerts();
+    },
+  });
+
+  // 请求通知权限
+  const handleRequestNotification = async () => {
+    const granted = await requestNotificationPermission();
+    setNotificationEnabled(granted);
+    if (!granted) {
+      alert('通知权限被拒绝，无法接收价格预警通知');
+    }
+  };
+
+  // 检查价格预警
+  useEffect(() => {
+    if (!notificationEnabled || quotes.length === 0 || allAlerts.length === 0) {
+      return;
+    }
+
+    // 创建价格映射
+    const priceMap = new Map<string, number>();
+    quotes.forEach((quote: any) => {
+      if (quote && quote.symbol && quote.price) {
+        priceMap.set(quote.symbol, quote.price);
+      }
+    });
+
+    // 检查每个预警
+    allAlerts.forEach((alert: PriceAlert) => {
+      // 跳过已触发或已通知的预警
+      if (alert.isTriggered || triggeredAlertsRef.current.has(alert.id)) {
+        return;
+      }
+
+      const currentPrice = priceMap.get(alert.symbol);
+      if (currentPrice === undefined) {
+        return;
+      }
+
+      const targetPrice = parseFloat(alert.targetPrice);
+      let triggered = false;
+
+      if (alert.alertType === 'above' && currentPrice >= targetPrice) {
+        triggered = true;
+      } else if (alert.alertType === 'below' && currentPrice <= targetPrice) {
+        triggered = true;
+      }
+
+      if (triggered) {
+        // 发送通知
+        sendPriceAlertNotification(alert.symbol, currentPrice, targetPrice, alert.alertType);
+        
+        // 标记为已触发
+        triggeredAlertsRef.current.add(alert.id);
+        
+        // 更新数据库状态（可选）
+        // 这里可以调用API更新isTriggered字段
+      }
+    });
+  }, [quotes, allAlerts, notificationEnabled]);
 
   // 自动刷新
   useEffect(() => {
@@ -74,248 +154,265 @@ export default function Watchlist() {
 
     const interval = setInterval(() => {
       refetchQuotes();
+      refetchAlerts();
       setLastUpdate(new Date());
     }, 30000); // 每30秒刷新一次
 
     return () => clearInterval(interval);
-  }, [autoRefresh, refetchQuotes]);
+  }, [autoRefresh, refetchQuotes, refetchAlerts]);
 
   // 手动刷新
   const handleRefresh = () => {
     refetchQuotes();
+    refetchAlerts();
     setLastUpdate(new Date());
   };
 
-  // 添加自选股
-  const handleAddStock = async () => {
-    if (!newSymbol.trim()) {
-      alert('请输入股票代码');
-      return;
-    }
+  // 打开价格预警对话框
+  const handleOpenAlertDialog = (symbol: string, price: number) => {
+    setSelectedStock({ symbol, price });
+    setAlertDialogOpen(true);
+  };
 
-    // 简单的市场判断逻辑
-    let market = 'US';
-    if (/^\d{6}$/.test(newSymbol)) {
-      market = 'CN';
-    } else if (/^\d{4}$/.test(newSymbol)) {
-      market = 'HK';
-    }
-
-    addMutation.mutate({
-      symbol: newSymbol.toUpperCase(),
-      market,
+  // 保存价格预警
+  const handleSaveAlert = async (priceUpper: number | null, priceLower: number | null) => {
+    if (!selectedStock) return;
+    
+    await upsertAlertMutation.mutateAsync({
+      symbol: selectedStock.symbol,
+      priceUpper,
+      priceLower,
     });
   };
 
-  // 删除自选股
-  const handleRemove = (watchlistId: number) => {
-    if (confirm('确定要删除这只股票吗？')) {
-      removeMutation.mutate({ watchlistId });
-    }
+  // 获取股票的预警设置
+  const getStockAlerts = (symbol: string) => {
+    const alerts = allAlerts.filter((a: PriceAlert) => a.symbol === symbol && a.isActive);
+    const priceUpper = alerts.find((a: PriceAlert) => a.alertType === 'above')?.targetPrice;
+    const priceLower = alerts.find((a: PriceAlert) => a.alertType === 'below')?.targetPrice;
+    
+    return {
+      priceUpper: priceUpper ? parseFloat(priceUpper) : undefined,
+      priceLower: priceLower ? parseFloat(priceLower) : undefined,
+    };
   };
 
   // 合并watchlist和quotes数据
-  const stocksWithQuotes = watchlist.map((stock: any) => {
-    const quote = quotes.find((q: any) => q.symbol === stock.symbol);
+  const stocksWithQuotes = watchlist.map((stock: WatchlistStock) => {
+    const quote = quotes.find((q: any) => q && q.symbol === stock.symbol);
+    const alerts = getStockAlerts(stock.symbol);
+    const hasAlerts = alerts.priceUpper !== undefined || alerts.priceLower !== undefined;
+    
     return {
       ...stock,
       quote,
+      alerts,
+      hasAlerts,
     };
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      <div className="container py-8">
-        {/* 页面标题 */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">自选股监控</h1>
-          <p className="text-blue-100">实时监控您关注的股票价格变化和买卖信号</p>
+    <div className="container mx-auto py-8 space-y-6">
+      {/* 页面标题和操作栏 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">自选股监控</h1>
+          <p className="text-muted-foreground mt-1">
+            实时监控您关注的股票价格变化和买卖信号
+          </p>
         </div>
+        <div className="flex items-center gap-2">
+          {/* 通知权限按钮 */}
+          {!notificationEnabled && (
+            <Button variant="outline" onClick={handleRequestNotification} className="gap-2">
+              <Bell className="w-4 h-4" />
+              启用通知
+            </Button>
+          )}
+          
+          {/* 自动刷新开关 */}
+          <Button
+            variant="outline"
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            className="gap-2"
+          >
+            {autoRefresh ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+            {autoRefresh ? '自动刷新' : '已暂停'}
+          </Button>
 
-        {/* 操作栏 */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  添加自选股
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-gray-900 border-gray-700">
-                <DialogHeader>
-                  <DialogTitle>添加自选股</DialogTitle>
-                  <DialogDescription>
-                    输入股票代码，支持美股、港股、A股
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div>
-                    <Label htmlFor="symbol">股票代码</Label>
-                    <Input
-                      id="symbol"
-                      placeholder="例如: AAPL, 1530, 600519"
-                      value={newSymbol}
-                      onChange={(e) => setNewSymbol(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleAddStock();
-                        }
-                      }}
-                      className="bg-black border-gray-700"
-                    />
-                  </div>
+          {/* 手动刷新按钮 */}
+          <Button variant="outline" onClick={handleRefresh} className="gap-2">
+            <RefreshCw className={`w-4 h-4 ${quotesLoading ? 'animate-spin' : ''}`} />
+            刷新
+          </Button>
+
+          {/* 添加自选股按钮 */}
+          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="w-4 h-4" />
+                添加自选股
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>添加自选股</DialogTitle>
+                <DialogDescription>
+                  输入股票代码添加到自选股列表
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="symbol">股票代码</Label>
+                  <Input
+                    id="symbol"
+                    placeholder="例如: AAPL, 1530, 600519"
+                    value={newSymbol}
+                    onChange={(e) => setNewSymbol(e.target.value)}
+                  />
                 </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setAddDialogOpen(false)}
-                  >
-                    取消
-                  </Button>
-                  <Button
-                    onClick={handleAddStock}
-                    disabled={addMutation.isPending}
-                  >
-                    {addMutation.isPending ? '添加中...' : '添加'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleRefresh}
-              disabled={quotesLoading}
-              title="刷新数据"
-            >
-              <RefreshCw className={`w-4 h-4 ${quotesLoading ? 'animate-spin' : ''}`} />
-            </Button>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              title={autoRefresh ? '关闭自动刷新' : '开启自动刷新'}
-            >
-              {autoRefresh ? (
-                <Bell className="w-4 h-4" />
-              ) : (
-                <BellOff className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-
-          <div className="text-sm text-gray-400">
-            最后更新：{lastUpdate.toLocaleTimeString()}
-          </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  onClick={() => {
+                    if (newSymbol.trim()) {
+                      // 自动检测市场
+                      let market = 'US';
+                      const symbol = newSymbol.trim();
+                      if (/^\d{4,6}$/.test(symbol)) {
+                        market = 'HK'; // 香港股票
+                      } else if (/^6\d{5}$/.test(symbol)) {
+                        market = 'CN'; // A股
+                      }
+                      addMutation.mutate({ symbol, market });
+                    }
+                  }}
+                  disabled={!newSymbol.trim() || addMutation.isPending}
+                >
+                  {addMutation.isPending ? '添加中...' : '添加'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
+      </div>
 
-        {/* 股票列表 */}
-        {stocksWithQuotes.length === 0 ? (
-          <Card className="bg-black/50 border-gray-700">
-            <CardContent className="py-12 text-center">
-              <p className="text-gray-400 mb-4">您还没有添加任何自选股</p>
-              <Button onClick={() => setAddDialogOpen(true)}>
+      {/* 最后更新时间 */}
+      <div className="text-sm text-muted-foreground">
+        最后更新: {lastUpdate.toLocaleTimeString('zh-CN')}
+      </div>
+
+      {/* 自选股列表 */}
+      {stocksWithQuotes.length === 0 ? (
+        <Card className="bg-card/50 backdrop-blur-sm">
+          <CardContent className="py-12">
+            <div className="text-center space-y-4">
+              <div className="text-muted-foreground">您还没有添加任何自选股</div>
+              <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
                 添加第一只股票
               </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {stocksWithQuotes.map((stock: any) => {
-              const quote = stock.quote;
-              const isPositive = quote && quote.changePercent > 0;
-              const isNegative = quote && quote.changePercent < 0;
-
-              return (
-                <Card key={stock.id} className="bg-black/50 border-gray-700 hover:border-primary/50 transition-colors">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-xl">{stock.symbol}</CardTitle>
-                        <CardDescription>
-                          {stock.nameCn || stock.symbol}
-                        </CardDescription>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {stock.exchange} · {stock.market}市场 · {stock.currency}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemove(stock.id)}
-                        className="text-gray-400 hover:text-red-400"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {stocksWithQuotes.map((stock) => (
+            <Card key={stock.id} className="bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg">{stock.symbol}</CardTitle>
+                    <CardDescription className="text-sm">
+                      {stock.nameCn || stock.market}
+                      {stock.hasAlerts && (
+                        <span className="ml-2 text-primary">
+                          <Bell className="w-3 h-3 inline" />
+                        </span>
+                      )}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeMutation.mutate({ watchlistId: stock.id })}
+                    className="h-8 w-8"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {stock.quote ? (
+                  <>
+                    {/* 价格信息 */}
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold">{stock.quote.price.toFixed(2)}</span>
+                      <span className={`text-sm ${stock.quote.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {stock.quote.change >= 0 ? '+' : ''}{stock.quote.change.toFixed(2)} ({stock.quote.changePercent.toFixed(2)}%)
+                      </span>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    {quote ? (
-                      <div className="space-y-3">
-                        {/* 价格信息 */}
-                        <div>
-                          <div className="text-3xl font-bold">
-                            {quote.price?.toFixed(2) || '--'}
-                          </div>
-                          <div className={`flex items-center gap-2 text-sm ${
-                            isPositive ? 'text-green-400' : isNegative ? 'text-red-400' : 'text-gray-400'
-                          }`}>
-                            {isPositive ? (
-                              <TrendingUp className="w-4 h-4" />
-                            ) : isNegative ? (
-                              <TrendingDown className="w-4 h-4" />
-                            ) : null}
-                            <span>
-                              {quote.change > 0 ? '+' : ''}{quote.change?.toFixed(2) || '--'}
-                              ({quote.changePercent > 0 ? '+' : ''}{quote.changePercent?.toFixed(2) || '--'}%)
-                            </span>
-                          </div>
-                        </div>
 
-                        {/* 买卖信号 */}
-                        {quote.signal && quote.signal !== 'hold' && (
-                          <div className={`px-3 py-2 rounded-lg ${
-                            quote.signal === 'buy' 
-                              ? 'bg-green-500/20 border border-green-500/30' 
-                              : 'bg-red-500/20 border border-red-500/30'
-                          }`}>
-                            <div className="flex items-center justify-between">
-                              <span className={`font-semibold ${
-                                quote.signal === 'buy' ? 'text-green-400' : 'text-red-400'
-                              }`}>
-                                {quote.signal === 'buy' ? '买入信号' : '卖出信号'}
-                              </span>
-                              {quote.signalStrength && (
-                                <span className="text-xs text-gray-400">
-                                  强度: {quote.signalStrength}/100
-                                </span>
-                              )}
-                            </div>
+                    {/* 买卖信号 */}
+                    {stock.quote.signal && stock.quote.signal !== 'hold' && (
+                      <div className="flex items-center gap-2">
+                        {stock.quote.signal === 'buy' ? (
+                          <div className="flex items-center gap-1 text-green-500">
+                            <TrendingUp className="w-4 h-4" />
+                            <span className="text-sm font-medium">买入信号</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-red-500">
+                            <TrendingDown className="w-4 h-4" />
+                            <span className="text-sm font-medium">卖出信号</span>
                           </div>
                         )}
-
-                        {/* 操作按钮 */}
-                        <Link href={`/?symbol=${stock.symbol}`}>
-                          <Button variant="outline" className="w-full">
-                            查看详情
-                          </Button>
-                        </Link>
-                      </div>
-                    ) : (
-                      <div className="text-center text-gray-400 py-4">
-                        加载中...
+                        {stock.quote.signalStrength && (
+                          <span className="text-xs text-muted-foreground">
+                            强度: {stock.quote.signalStrength}
+                          </span>
+                        )}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
+
+                    {/* 操作按钮 */}
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenAlertDialog(stock.symbol, stock.quote!.price)}
+                        className="flex-1 gap-2"
+                      >
+                        <Bell className="w-3 h-3" />
+                        {stock.hasAlerts ? '修改预警' : '设置预警'}
+                      </Button>
+                      <Link href={`/?symbol=${stock.symbol}`}>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          查看详情
+                        </Button>
+                      </Link>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-sm text-muted-foreground">加载中...</div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* 价格预警设置对话框 */}
+      {selectedStock && (
+        <PriceAlertDialog
+          open={alertDialogOpen}
+          onOpenChange={setAlertDialogOpen}
+          symbol={selectedStock.symbol}
+          currentPrice={selectedStock.price}
+          existingAlert={getStockAlerts(selectedStock.symbol)}
+          onSave={handleSaveAlert}
+        />
+      )}
     </div>
   );
 }

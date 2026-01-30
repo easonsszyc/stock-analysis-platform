@@ -151,6 +151,28 @@ export async function removeFromWatchlist(userId: number, watchlistId: number) {
 }
 
 /**
+ * Get a watchlist item by symbol
+ */
+export async function getWatchlistBySymbol(userId: number, symbol: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  try {
+    const result = await db
+      .select()
+      .from(watchlist)
+      .where(and(eq(watchlist.userId, userId), eq(watchlist.symbol, symbol)))
+      .limit(1);
+    return result[0] || null;
+  } catch (error) {
+    console.error("[Database] Failed to get watchlist item:", error);
+    throw error;
+  }
+}
+
+/**
  * Check if a stock is in user's watchlist
  */
 export async function isInWatchlist(userId: number, symbol: string) {
@@ -267,6 +289,25 @@ export async function updatePriceAlert(
       .where(and(eq(priceAlerts.id, alertId), eq(priceAlerts.userId, userId)));
   } catch (error) {
     console.error("[Database] Failed to update price alert:", error);
+    throw error;
+  }
+}
+
+/**
+ * Delete all price alerts for a specific stock
+ */
+export async function deletePriceAlertsBySymbol(userId: number, symbol: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  try {
+    await db
+      .delete(priceAlerts)
+      .where(and(eq(priceAlerts.userId, userId), eq(priceAlerts.symbol, symbol)));
+  } catch (error) {
+    console.error("[Database] Failed to delete price alerts by symbol:", error);
     throw error;
   }
 }
