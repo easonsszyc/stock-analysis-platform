@@ -539,3 +539,15 @@
 - [x] 服务器重启成功
 - [x] 首页正常加载
 - [ ] 保存检查点并交付
+
+## 新功能开发 - 模拟交易盈亏计算器（用户需求）
+- [x] 设计功能逻辑：根据买卖信号配对计算每笔交易盈亏
+- [x] 设计数据结构：TradingSimulationResult接口
+- [x] 创建trading-simulation.service.ts，实现calculateTradingSimulation函数
+- [x] 修改intraday.routes.ts，返回tradingSimulation字段
+- [x] 创建TradingSimulationCard组件
+- [x] 修改IntradayChart，集成TradingSimulationCard显示
+- [x] 显示总盈亏、盈亏百分比、交易次数、胜率、未平仓
+- [x] TypeScript编译通过（0错误）
+- [x] 服务器重启成功
+- [ ] 保存检查点并交付

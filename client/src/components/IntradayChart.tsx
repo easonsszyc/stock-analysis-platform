@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SignalDetailDialog } from './SignalDetailDialog';
+import { TradingSimulationCard } from './TradingSimulationCard';
 
 interface IntradayDataPoint {
   time: string;
@@ -80,6 +81,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
     description: string;
   } | null>(null);
   const [dataDate, setDataDate] = useState<string>('');
+  const [tradingSimulation, setTradingSimulation] = useState<any>(null);
 
   // 获取分时数据和买卖信号
   useEffect(() => {
@@ -104,6 +106,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
         setSignals(result.signals);
         setMarketStatus(result.marketStatus || null);
         setDataDate(result.date || '');
+        setTradingSimulation(result.tradingSimulation || null);
         
         // 更新当前价格（使用最新的数据点）
         if (result.data && result.data.length > 0) {
@@ -473,6 +476,16 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
         signal={selectedSignal}
         currentPrice={currentPrice}
       />
+      
+      {/* 模拟交易盈亏分析 */}
+      {tradingSimulation && (
+        <div className="mt-6">
+          <TradingSimulationCard 
+            simulation={tradingSimulation}
+            currency={market === 'US' ? 'USD' : market === 'HK' ? 'HKD' : 'CNY'}
+          />
+        </div>
+      )}
     </Card>
   );
 }

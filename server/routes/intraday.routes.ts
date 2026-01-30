@@ -6,6 +6,7 @@ import { getIntradayData } from '../services/intraday-data.service';
 import { analyzeTradingSignals } from '../services/trading-signals.service';
 import { analyzeMultiTimeframeResonance, enrichSignalsWithResonance } from '../services/multi-timeframe.service';
 import { getUSMarketStatus, isHKMarketOpen, isCNMarketOpen } from '../utils/market-status';
+import { calculateTradingSimulation } from '../services/trading-simulation.service';
 
 const router = Router();
 
@@ -60,12 +61,19 @@ router.get('/data', async (req, res) => {
       };
     }
     
+    // 计算模拟交易盈亏（默认10000元初始资金）
+    const initialCapital = req.query.initialCapital 
+      ? parseFloat(req.query.initialCapital as string) 
+      : 10000;
+    const tradingSimulation = calculateTradingSimulation(signals, initialCapital);
+    
     res.json({
       symbol: intradayData.symbol,
       date: intradayData.date,
       data: intradayData.data,
       signals,
       marketStatus,
+      tradingSimulation,
     });
   } catch (error) {
     console.error('Error fetching intraday data:', error);
