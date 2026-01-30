@@ -83,7 +83,6 @@ class StockDataService {
           region: region,
           interval: interval,
           range: range,
-          includeAdjustedClose: 'true',
           events: 'div,split'
         }
       });
