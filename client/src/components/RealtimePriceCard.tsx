@@ -103,9 +103,10 @@ export function RealtimePriceCard({
   }
 
   const isPositive = quote.change >= 0;
-  const changeColor = isPositive ? 'text-green-500' : 'text-red-500';
-  const bgColor = isPositive ? 'bg-green-500/10' : 'bg-red-500/10';
-  const borderColor = isPositive ? 'border-green-500/30' : 'border-red-500/30';
+  // 中国市场习惯：红涨绿跌
+  const changeColor = isPositive ? 'text-red-500' : 'text-green-500';
+  const bgColor = isPositive ? 'bg-red-500/10' : 'bg-green-500/10';
+  const borderColor = isPositive ? 'border-red-500/30' : 'border-green-500/30';
 
   return (
     <Card className={cn('border-2 transition-all duration-300', borderColor, bgColor)}>

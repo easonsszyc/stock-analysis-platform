@@ -2,6 +2,7 @@
  * 实时股票数据服务
  * 使用腾讯财经API获取实时行情数据
  */
+import * as iconv from 'iconv-lite';
 
 interface RealtimeQuote {
   symbol: string;
@@ -139,14 +140,16 @@ export async function getRealtimeQuote(
     const tencentSymbol = convertToTencentSymbol(symbol, market);
     const url = `https://qt.gtimg.cn/q=${tencentSymbol}`;
     
-    console.log(`Fetching realtime data from: ${url}`);
-    
+    console.log('Fetching realtime data from:', url);
+
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
-    const rawData = await response.text();
+
+    // 腾讯财经API返回GBK编码，需要转换为UTF-8
+    const buffer = await response.arrayBuffer();
+    const rawData = iconv.decode(Buffer.from(buffer), 'gbk');
     console.log(`Received data: ${rawData.substring(0, 200)}...`);
     
     const quote = parseTencentData(rawData, tencentSymbol);
