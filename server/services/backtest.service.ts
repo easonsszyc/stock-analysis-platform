@@ -95,32 +95,196 @@ export async function runBacktest(
   // 这里先返回模拟数据，后续需要对接真实历史数据源
   
   const initialCapital = 10000;
-  const trades: TradeRecord[] = [];
-  const equityCurve: EquityPoint[] = [];
   
-  // 模拟回测结果（实际需要遍历历史数据）
+  // 生成模拟交易记录
+  const trades: TradeRecord[] = [
+    {
+      tradeId: 1,
+      entryDate: '2025-11-05',
+      entryTime: '10:30:00',
+      entryPrice: 100.50,
+      exitDate: '2025-11-05',
+      exitTime: '14:20:00',
+      exitPrice: 102.30,
+      shares: 100,
+      profit: 180,
+      profitPercent: 1.79,
+      exitReason: 'signal',
+    },
+    {
+      tradeId: 2,
+      entryDate: '2025-11-08',
+      entryTime: '09:45:00',
+      entryPrice: 102.00,
+      exitDate: '2025-11-08',
+      exitTime: '11:30:00',
+      exitPrice: 101.20,
+      shares: 100,
+      profit: -80,
+      profitPercent: -0.78,
+      exitReason: 'stop_loss',
+    },
+    {
+      tradeId: 3,
+      entryDate: '2025-11-12',
+      entryTime: '10:15:00',
+      entryPrice: 103.50,
+      exitDate: '2025-11-12',
+      exitTime: '15:00:00',
+      exitPrice: 105.80,
+      shares: 95,
+      profit: 218.5,
+      profitPercent: 2.22,
+      exitReason: 'take_profit',
+    },
+    {
+      tradeId: 4,
+      entryDate: '2025-11-15',
+      entryTime: '11:00:00',
+      entryPrice: 104.20,
+      exitDate: '2025-11-15',
+      exitTime: '13:45:00',
+      exitPrice: 103.50,
+      shares: 95,
+      profit: -66.5,
+      profitPercent: -0.67,
+      exitReason: 'signal',
+    },
+    {
+      tradeId: 5,
+      entryDate: '2025-11-20',
+      entryTime: '09:30:00',
+      entryPrice: 105.00,
+      exitDate: '2025-11-20',
+      exitTime: '14:30:00',
+      exitPrice: 107.50,
+      shares: 90,
+      profit: 225,
+      profitPercent: 2.38,
+      exitReason: 'signal',
+    },
+    {
+      tradeId: 6,
+      entryDate: '2025-11-25',
+      entryTime: '10:00:00',
+      entryPrice: 106.80,
+      exitDate: '2025-11-25',
+      exitTime: '15:30:00',
+      exitPrice: 108.20,
+      shares: 90,
+      profit: 126,
+      profitPercent: 1.31,
+      exitReason: 'signal',
+    },
+    {
+      tradeId: 7,
+      entryDate: '2025-12-02',
+      entryTime: '09:45:00',
+      entryPrice: 107.50,
+      exitDate: '2025-12-02',
+      exitTime: '11:00:00',
+      exitPrice: 106.20,
+      shares: 90,
+      profit: -117,
+      profitPercent: -1.21,
+      exitReason: 'stop_loss',
+    },
+    {
+      tradeId: 8,
+      entryDate: '2025-12-10',
+      entryTime: '10:30:00',
+      entryPrice: 108.00,
+      exitDate: '2025-12-10',
+      exitTime: '14:00:00',
+      exitPrice: 109.80,
+      shares: 85,
+      profit: 153,
+      profitPercent: 1.67,
+      exitReason: 'signal',
+    },
+    {
+      tradeId: 9,
+      entryDate: '2025-12-18',
+      entryTime: '11:15:00',
+      entryPrice: 109.20,
+      exitDate: '2025-12-18',
+      exitTime: '15:45:00',
+      exitPrice: 110.50,
+      shares: 85,
+      profit: 110.5,
+      profitPercent: 1.19,
+      exitReason: 'signal',
+    },
+    {
+      tradeId: 10,
+      entryDate: '2026-01-08',
+      entryTime: '09:30:00',
+      entryPrice: 110.00,
+      exitDate: '2026-01-08',
+      exitTime: '13:30:00',
+      exitPrice: 108.50,
+      shares: 85,
+      profit: -127.5,
+      profitPercent: -1.36,
+      exitReason: 'stop_loss',
+    },
+  ];
+  
+  // 生成资金曲线（每天一个数据点）
+  const equityCurve: EquityPoint[] = [];
+  let currentEquity = initialCapital;
+  const startTime = new Date(startDate).getTime();
+  const endTime = new Date(endDate).getTime();
+  const dayMs = 24 * 60 * 60 * 1000;
+  
+  for (let time = startTime; time <= endTime; time += dayMs) {
+    const date = new Date(time);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // 模拟随机波动
+    const randomChange = (Math.random() - 0.5) * 200;
+    currentEquity = Math.max(initialCapital * 0.8, Math.min(initialCapital * 1.3, currentEquity + randomChange));
+    
+    equityCurve.push({
+      date: dateStr,
+      time: '16:00:00',
+      equity: Math.round(currentEquity * 100) / 100,
+      cash: Math.round(currentEquity * 0.3 * 100) / 100,
+      positionValue: Math.round(currentEquity * 0.7 * 100) / 100,
+    });
+  }
+  
+  const finalCapital = equityCurve[equityCurve.length - 1].equity;
+  const totalReturn = (finalCapital - initialCapital) / initialCapital;
+  
+  // 计算交易统计
+  const winningTrades = trades.filter(t => t.profit && t.profit > 0).length;
+  const losingTrades = trades.filter(t => t.profit && t.profit < 0).length;
+  const totalProfit = trades.filter(t => t.profit && t.profit > 0).reduce((sum, t) => sum + (t.profit || 0), 0);
+  const totalLoss = Math.abs(trades.filter(t => t.profit && t.profit < 0).reduce((sum, t) => sum + (t.profit || 0), 0));
+  
   const result: BacktestResult = {
     symbol,
     startDate,
     endDate,
-    tradingDays: 60,
+    tradingDays: Math.floor((endTime - startTime) / dayMs),
     
     initialCapital,
-    finalCapital: 10500,
-    totalReturn: 0.05,
-    annualizedReturn: 0.15,
+    finalCapital,
+    totalReturn,
+    annualizedReturn: totalReturn * (365 / Math.floor((endTime - startTime) / dayMs)),
     
     maxDrawdown: -0.08,
     sharpeRatio: 1.2,
     volatility: 0.15,
     
-    totalTrades: 10,
-    winningTrades: 6,
-    losingTrades: 4,
-    winRate: 0.6,
-    avgProfit: 150,
-    avgLoss: -80,
-    profitFactor: 1.875,
+    totalTrades: trades.length,
+    winningTrades,
+    losingTrades,
+    winRate: winningTrades / trades.length,
+    avgProfit: totalProfit / winningTrades,
+    avgLoss: -totalLoss / losingTrades,
+    profitFactor: totalProfit / totalLoss,
     
     equityCurve,
     trades,

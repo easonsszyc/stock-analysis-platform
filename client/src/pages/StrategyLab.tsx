@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Play, TrendingUp, TrendingDown, Activity, Target, BarChart3, AlertTriangle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Play, TrendingUp, TrendingDown, Activity, Target, BarChart3, AlertTriangle, Zap, Clock, TrendingUpIcon } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface BacktestConfig {
@@ -49,6 +50,47 @@ interface BacktestResult {
   }>;
 }
 
+type TradingStyle = 'scalping' | 'day_trading' | 'swing_trading';
+
+const TRADING_STYLE_PRESETS: Record<TradingStyle, { label: string; icon: any; config: BacktestConfig; description: string }> = {
+  scalping: {
+    label: '剥头皮',
+    icon: Zap,
+    description: '超短线，持仓<5分钟，高频交易',
+    config: {
+      rsiOverbought: 75,
+      rsiOversold: 25,
+      positionSize: 0.2,
+      stopLoss: -0.01,
+      takeProfit: 0.015,
+    },
+  },
+  day_trading: {
+    label: '日内交易',
+    icon: Clock,
+    description: '中短线，持仓<1天，中频交易',
+    config: {
+      rsiOverbought: 70,
+      rsiOversold: 30,
+      positionSize: 0.3,
+      stopLoss: -0.03,
+      takeProfit: 0.05,
+    },
+  },
+  swing_trading: {
+    label: '波段交易',
+    icon: TrendingUpIcon,
+    description: '中长线，持仓3-10天，低频交易',
+    config: {
+      rsiOverbought: 65,
+      rsiOversold: 35,
+      positionSize: 0.4,
+      stopLoss: -0.08,
+      takeProfit: 0.15,
+    },
+  },
+};
+
 export default function StrategyLab() {
   const [symbol, setSymbol] = useState('9988');
   const [market, setMarket] = useState('HK');
@@ -56,14 +98,14 @@ export default function StrategyLab() {
   const [endDate, setEndDate] = useState('2026-01-30');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<BacktestResult | null>(null);
+  const [tradingStyle, setTradingStyle] = useState<TradingStyle>('day_trading');
   
-  const [config, setConfig] = useState<BacktestConfig>({
-    rsiOverbought: 70,
-    rsiOversold: 30,
-    positionSize: 0.3,
-    stopLoss: -0.03,
-    takeProfit: 0.05,
-  });
+  const [config, setConfig] = useState<BacktestConfig>(TRADING_STYLE_PRESETS.day_trading.config);
+  
+  const handleTradingStyleChange = (style: TradingStyle) => {
+    setTradingStyle(style);
+    setConfig(TRADING_STYLE_PRESETS[style].config);
+  };
 
   const runBacktest = async () => {
     setLoading(true);
@@ -112,6 +154,41 @@ export default function StrategyLab() {
             <CardTitle>策略参数配置</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* 交易风格选择 */}
+            <div className="space-y-2">
+              <Label>交易风格</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {(Object.keys(TRADING_STYLE_PRESETS) as TradingStyle[]).map((style) => {
+                  const preset = TRADING_STYLE_PRESETS[style];
+                  const Icon = preset.icon;
+                  const isActive = tradingStyle === style;
+                  return (
+                    <button
+                      key={style}
+                      onClick={() => handleTradingStyleChange(style)}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        isActive
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 mx-auto mb-1 ${
+                        isActive ? 'text-primary' : 'text-muted-foreground'
+                      }`} />
+                      <div className={`text-xs font-medium ${
+                        isActive ? 'text-primary' : 'text-muted-foreground'
+                      }`}>
+                        {preset.label}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {TRADING_STYLE_PRESETS[tradingStyle].description}
+              </p>
+            </div>
+
             {/* 股票选择 */}
             <div className="space-y-2">
               <Label>股票代码</Label>
