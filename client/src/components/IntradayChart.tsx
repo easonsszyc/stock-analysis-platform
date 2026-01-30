@@ -18,6 +18,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SignalDetailDialog } from './SignalDetailDialog';
 
 interface IntradayDataPoint {
   time: string;
@@ -60,6 +61,8 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSignal, setSelectedSignal] = useState<TradingSignal | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [currentPrice, setCurrentPrice] = useState(0);
 
   // 获取分时数据和买卖信号
   useEffect(() => {
@@ -82,6 +85,11 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
         const result = await response.json();
         setData(result.data);
         setSignals(result.signals);
+        
+        // 更新当前价格（使用最新的数据点）
+        if (result.data && result.data.length > 0) {
+          setCurrentPrice(result.data[result.data.length - 1].price);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
@@ -202,7 +210,10 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
           fill={signal.type === 'buy' ? '#ef4444' : '#22c55e'}
           stroke="#fff"
           strokeWidth={2}
-          onClick={() => setSelectedSignal(signal)}
+          onClick={() => {
+            setSelectedSignal(signal);
+            setDialogOpen(true);
+          }}
           style={{ cursor: 'pointer' }}
         />
       );
@@ -288,72 +299,12 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
       </ResponsiveContainer>
 
       {/* 信号详情弹窗 */}
-      {selectedSignal && (
-        <div className="mt-6 p-4 bg-muted rounded-lg">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              {selectedSignal.type === 'buy' ? (
-                <TrendingUp className="h-5 w-5 text-red-500" />
-              ) : (
-                <TrendingDown className="h-5 w-5 text-green-500" />
-              )}
-              <span className="font-semibold">
-                {selectedSignal.type === 'buy' ? '买入信号' : '卖出信号'} @ {selectedSignal.time}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                价格 {selectedSignal.price.toFixed(2)}
-              </span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedSignal(null)}
-            >
-              关闭
-            </Button>
-          </div>
-          
-          <div className="space-y-2 text-sm">
-            <div>
-              <span className="text-muted-foreground">信号强度:</span>
-              <span className="ml-2 font-semibold">{selectedSignal.strength}/100</span>
-            </div>
-            
-            <div>
-              <span className="text-muted-foreground">信号原因:</span>
-              <ul className="ml-6 mt-1 list-disc">
-                {selectedSignal.reasons.map((reason, index) => (
-                  <li key={index}>{reason}</li>
-                ))}
-              </ul>
-            </div>
-            
-            {selectedSignal.stopLoss && (
-              <div>
-                <span className="text-muted-foreground">止损位:</span>
-                <span className="ml-2 font-semibold text-green-500">
-                  {selectedSignal.stopLoss.toFixed(2)}
-                </span>
-                <span className="ml-2 text-xs text-muted-foreground">
-                  ({((selectedSignal.stopLoss - selectedSignal.price) / selectedSignal.price * 100).toFixed(2)}%)
-                </span>
-              </div>
-            )}
-            
-            {selectedSignal.target && (
-              <div>
-                <span className="text-muted-foreground">目标位:</span>
-                <span className="ml-2 font-semibold text-red-500">
-                  {selectedSignal.target.toFixed(2)}
-                </span>
-                <span className="ml-2 text-xs text-muted-foreground">
-                  ({((selectedSignal.target - selectedSignal.price) / selectedSignal.price * 100).toFixed(2)}%)
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <SignalDetailDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        signal={selectedSignal}
+        currentPrice={currentPrice}
+      />
     </Card>
   );
 }

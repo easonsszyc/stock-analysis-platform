@@ -95,16 +95,16 @@
   --sidebar-primary: oklch(0.6 0.12 200);
   --sidebar-primary-foreground: oklch(0.98 0 0);
   
-  --background: oklch(0.15 0.005 250); /* 深灰背景 #1a1a1a */
-  --foreground: oklch(0.88 0 0); /* 柔和灰白色 #e0e0e0 */
-  --card: oklch(0.18 0.005 250); /* 半透明深色卡片 #2a2a2a */
-  --card-foreground: oklch(0.88 0 0);
+  --background: oklch(0 0 0); /* 纯黑背景 #000000 */
+  --foreground: oklch(1 0 0); /* 纯白色文字 #ffffff */
+  --card: oklch(0.1 0 0); /* 深色卡片 #1a1a1a */
+  --card-foreground: oklch(1 0 0); /* 纯白色卡片文字 */
   --popover: oklch(0.18 0.005 250);
   --popover-foreground: oklch(0.88 0 0);
   --secondary: oklch(0.22 0.005 250);
   --secondary-foreground: oklch(0.88 0 0);
   --muted: oklch(0.25 0.005 250);
-  --muted-foreground: oklch(0.6 0 0); /* 灰色次要文字 #999999 */
+  --muted-foreground: oklch(0.75 0 0); /* 较亮的灰色文字 */
   --accent: oklch(0.65 0.15 180); /* 柔和蓝绿强调色 */
   --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.55 0.22 25); /* 红色警告 */
