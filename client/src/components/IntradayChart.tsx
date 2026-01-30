@@ -12,7 +12,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ReferenceDot,
+  Scatter,
 } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -200,8 +200,8 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
     );
   };
 
-  // 渲染买卖信号标注
-  const renderSignals = () => {
+  // 准备Scatter数据
+  const prepareScatterData = () => {
     console.log(`[IntradayChart] Rendering ${signals.length} signals`);
     console.log('[IntradayChart] First signal:', signals[0]);
     console.log('[IntradayChart] First chartData:', chartData[0]);
@@ -266,50 +266,34 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
       
       // 判断是否为共振信号（高亮显示）
       const isResonance = signal.resonance && signal.resonance.level >= 2;
-      const fillColor = signal.type === 'buy' ? '#ef4444' : '#22c55e';
       
-      return (
-        <>
-          <ReferenceDot
-            key={index}
-            x={dataPoint.time}
-            y={dataPoint.price}
-            r={isResonance ? 8 : 6}
-            fill={fillColor}
-            stroke="#fff"
-            strokeWidth={isResonance ? 3 : 2}
-            onClick={() => {
-              setSelectedSignal(signal);
-              setDialogOpen(true);
-            }}
-            style={{ cursor: 'pointer' }}
-          />
-          {/* 共振信号显示外圈 */}
-          {isResonance && (
-            <ReferenceDot
-              key={`${index}-outer`}
-              x={dataPoint.time}
-              y={dataPoint.price}
-              r={12}
-              fill="none"
-              stroke={fillColor}
-              strokeWidth={2}
-              strokeDasharray="3 3"
-              onClick={() => {
-                setSelectedSignal(signal);
-                setDialogOpen(true);
-              }}
-              style={{ cursor: 'pointer' }}
-            />
-          )}
-        </>
-      );
+      // 添加调试日志
+      if (index < 3) {
+        console.log(`[IntradayChart] Preparing scatter point #${index}: time=${dataPoint.time}, price=${dataPoint.price}, type=${signal.type}`);
+      }
+      
+      return {
+        time: dataPoint.time,
+        price: dataPoint.price,
+        type: signal.type,
+        isResonance,
+        signal,  // 保存原始信号数据以便点击时使用
+      };
     });
     
     console.log(`[IntradayChart] Signal matching summary: matched=${matchedCount}, skipped=${skippedCount}`);
     
-    return result.filter(item => item !== null);
+    const scatterData = result.filter(item => item !== null);
+    console.log(`[IntradayChart] Prepared ${scatterData.length} scatter points`);
+    return scatterData;
   };
+  
+  // 获取买入和卖出信号数据
+  const scatterData = prepareScatterData();
+  const buySignals = scatterData.filter(d => d.type === 'buy');
+  const sellSignals = scatterData.filter(d => d.type === 'sell');
+  
+  console.log(`[IntradayChart] Buy signals: ${buySignals.length}, Sell signals: ${sellSignals.length}`);
 
   if (loading) {
     return (
@@ -385,7 +369,40 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
             name="价格"
             isAnimationActive={false}
           />
-          {renderSignals()}
+          {/* 买入信号 */}
+          {buySignals.length > 0 && (
+            <Scatter
+              name="买入信号"
+              data={buySignals}
+              fill="#22c55e"
+              shape="circle"
+              dataKey="price"
+              isAnimationActive={false}
+              onClick={(data) => {
+                if (data && data.signal) {
+                  setSelectedSignal(data.signal);
+                  setDialogOpen(true);
+                }
+              }}
+            />
+          )}
+          {/* 卖出信号 */}
+          {sellSignals.length > 0 && (
+            <Scatter
+              name="卖出信号"
+              data={sellSignals}
+              fill="#ef4444"
+              shape="circle"
+              dataKey="price"
+              isAnimationActive={false}
+              onClick={(data) => {
+                if (data && data.signal) {
+                  setSelectedSignal(data.signal);
+                  setDialogOpen(true);
+                }
+              }}
+            />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
 
