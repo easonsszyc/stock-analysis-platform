@@ -70,6 +70,40 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         return await db.isInWatchlist(ctx.user.id, input.symbol);
       }),
+
+    // 批量获取自选股实时数据
+    getQuotes: protectedProcedure
+      .query(async ({ ctx }) => {
+        const watchlist = await db.getUserWatchlist(ctx.user.id);
+        const symbols = watchlist.map((item: any) => item.symbol);
+        
+        if (symbols.length === 0) {
+          return [];
+        }
+
+        // 批量获取股票价格
+        const quotes = await Promise.all(
+          symbols.map(async (symbol: string) => {
+            try {
+              const response = await fetch(`/api/stock/quote?symbol=${encodeURIComponent(symbol)}`);
+              const result = await response.json();
+              
+              if (result.success) {
+                return {
+                  symbol,
+                  ...result.data,
+                };
+              }
+              return null;
+            } catch (error) {
+              console.error(`Failed to fetch quote for ${symbol}:`, error);
+              return null;
+            }
+          })
+        );
+
+        return quotes.filter((q: any) => q !== null);
+      }),
   }),
 
   // Price alerts management
