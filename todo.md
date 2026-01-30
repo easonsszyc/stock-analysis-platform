@@ -466,4 +466,14 @@
 - [x] 修复SignalDetailDialog中 pairedSignal未定义导致的TypeError
 - [x] 添加pairedSignal存在性检查（使用可选链操作符?.）
 - [x] TypeScript编译通过（0错误）
+- [x] 保存检查点并交付给用户（版本号：1457348e）
+
+## 紧急BUG修复 - SignalDetailDialog TypeError（再次发生）
+
+- [x] 全面检查SignalDetailDialog中所有toFixed()调用（11处）
+- [x] 检查signal.price、signal.profitLoss、signal.profitLossPercent等所有数值字段
+- [x] 添加全面的安全检查（使用可选链?.和默认值'-'）
+- [x] 修复所有技术指标字段的安全访问（RSI, MACD, KDJ, 布林带）
+- [x] 修复止损/止盈/风险收益比的安全访问
+- [x] TypeScript编译通过（0错误）
 - [ ] 保存检查点并交付给用户

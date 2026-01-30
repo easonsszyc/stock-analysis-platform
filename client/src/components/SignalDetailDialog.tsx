@@ -93,7 +93,7 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
             </Badge>
           </div>
           <DialogDescription className="text-muted-foreground">
-            {signal.time} · 价格 {signal.price.toFixed(2)} · 信号强度 {signal.strength}%
+            {signal.time} · 价格 {signal.price?.toFixed(2) || '-'} · 信号强度 {signal.strength || 0}%
           </DialogDescription>
         </DialogHeader>
 
@@ -113,20 +113,20 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
               <div className="text-sm space-y-2">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">买入价格：</span>
-                  <span className="font-semibold text-red-400">{isBuy ? signal.price.toFixed(2) : (signal.pairedSignal?.price?.toFixed(2) || '-')}</span>
+                  <span className="font-semibold text-red-400">{isBuy ? (signal.price?.toFixed(2) || '-') : (signal.pairedSignal?.price?.toFixed(2) || '-')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">卖出价格：</span>
-                  <span className="font-semibold text-green-400">{isBuy ? (signal.pairedSignal?.price?.toFixed(2) || '-') : signal.price.toFixed(2)}</span>
+                  <span className="font-semibold text-green-400">{isBuy ? (signal.pairedSignal?.price?.toFixed(2) || '-') : (signal.price?.toFixed(2) || '-')}</span>
                 </div>
                 {signal.profitLoss !== undefined && (
                   <>
                     <div className="h-px bg-border my-2" />
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">盈亏：</span>
-                      <span className={`font-bold text-lg ${signal.profitLoss >= 0 ? 'text-red-500' : 'text-green-500'}`}>
-                        {signal.profitLoss >= 0 ? '+' : ''}{signal.profitLoss.toFixed(2)}
-                        <span className="text-sm ml-1">({signal.profitLossPercent?.toFixed(2)}%)</span>
+                      <span className={`font-bold text-lg ${(signal.profitLoss || 0) >= 0 ? 'text-red-500' : 'text-green-500'}`}>
+                        {(signal.profitLoss || 0) >= 0 ? '+' : ''}{signal.profitLoss?.toFixed(2) || '0.00'}
+                        <span className="text-sm ml-1">({signal.profitLossPercent?.toFixed(2) || '0.00'}%)</span>
                       </span>
                     </div>
                   </>
@@ -197,7 +197,7 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
                 {signal.indicators.rsi !== undefined && (
                   <div className="bg-muted/50 p-3 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">RSI (相对强弱指标)</div>
-                    <div className="text-lg font-semibold text-foreground">{signal.indicators.rsi.toFixed(2)}</div>
+                    <div className="text-lg font-semibold text-foreground">{signal.indicators.rsi?.toFixed(2) || '-'}</div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {signal.indicators.rsi > 70
                         ? "超买区域"
@@ -214,13 +214,13 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
                     <div className="text-xs text-muted-foreground mb-1">MACD</div>
                     <div className="space-y-0.5">
                       <div className="text-sm text-foreground">
-                        DIF: {signal.indicators.macd.value.toFixed(4)}
+                        DIF: {signal.indicators.macd.value?.toFixed(4) || '-'}
                       </div>
                       <div className="text-sm text-foreground">
-                        DEA: {signal.indicators.macd.signal.toFixed(4)}
+                        DEA: {signal.indicators.macd.signal?.toFixed(4) || '-'}
                       </div>
                       <div className="text-sm text-foreground">
-                        柱状图: {signal.indicators.macd.histogram.toFixed(4)}
+                        柱状图: {signal.indicators.macd.histogram?.toFixed(4) || '-'}
                       </div>
                     </div>
                   </div>
@@ -231,9 +231,9 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
                   <div className="bg-muted/50 p-3 rounded-lg">
                     <div className="text-xs text-muted-foreground mb-1">KDJ</div>
                     <div className="space-y-0.5">
-                      <div className="text-sm text-foreground">K: {signal.indicators.kdj.k.toFixed(2)}</div>
-                      <div className="text-sm text-foreground">D: {signal.indicators.kdj.d.toFixed(2)}</div>
-                      <div className="text-sm text-foreground">J: {signal.indicators.kdj.j.toFixed(2)}</div>
+                      <div className="text-sm text-foreground">K: {signal.indicators.kdj.k?.toFixed(2) || '-'}</div>
+                      <div className="text-sm text-foreground">D: {signal.indicators.kdj.d?.toFixed(2) || '-'}</div>
+                      <div className="text-sm text-foreground">J: {signal.indicators.kdj.j?.toFixed(2) || '-'}</div>
                     </div>
                   </div>
                 )}
@@ -244,13 +244,13 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
                     <div className="text-xs text-muted-foreground mb-1">布林带</div>
                     <div className="space-y-0.5">
                       <div className="text-sm text-foreground">
-                        上轨: {signal.indicators.bollingerBands.upper.toFixed(2)}
+                        上轨: {signal.indicators.bollingerBands.upper?.toFixed(2) || '-'}
                       </div>
                       <div className="text-sm text-foreground">
-                        中轨: {signal.indicators.bollingerBands.middle.toFixed(2)}
+                        中轨: {signal.indicators.bollingerBands.middle?.toFixed(2) || '-'}
                       </div>
                       <div className="text-sm text-foreground">
-                        下轨: {signal.indicators.bollingerBands.lower.toFixed(2)}
+                        下轨: {signal.indicators.bollingerBands.lower?.toFixed(2) || '-'}
                       </div>
                     </div>
                   </div>
@@ -268,9 +268,9 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
                 <Shield className="w-5 h-5 text-green-500 mt-0.5" />
                 <div className="flex-1">
                   <div className="text-sm font-medium text-foreground">止损价位</div>
-                  <div className="text-lg font-semibold text-green-500">{stopLossPrice.toFixed(2)}</div>
+                  <div className="text-lg font-semibold text-green-500">{stopLossPrice?.toFixed(2) || '-'}</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    潜在亏损: {potentialLoss.toFixed(2)}%
+                    潜在亏损: {potentialLoss?.toFixed(2) || '-'}%
                   </div>
                 </div>
               </div>
@@ -280,9 +280,9 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
                 <Target className="w-5 h-5 text-red-500 mt-0.5" />
                 <div className="flex-1">
                   <div className="text-sm font-medium text-foreground">止盈价位</div>
-                  <div className="text-lg font-semibold text-red-500">{targetPrice.toFixed(2)}</div>
+                  <div className="text-lg font-semibold text-red-500">{targetPrice?.toFixed(2) || '-'}</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    潜在收益: {potentialProfit.toFixed(2)}%
+                    潜在收益: {potentialProfit?.toFixed(2) || '-'}%
                   </div>
                 </div>
               </div>
@@ -291,7 +291,7 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div className="text-sm font-medium text-foreground">风险收益比</div>
                 <div className="text-lg font-semibold text-primary">
-                  1:{riskReward.toFixed(2)}
+                  1:{riskReward?.toFixed(2) || '-'}
                 </div>
               </div>
             </div>
