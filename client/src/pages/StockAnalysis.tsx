@@ -181,8 +181,8 @@ export default function StockAnalysis() {
 
           {/* 单股分析 */}
           <TabsContent value="single" className="space-y-8 animate-fade-in">
-            <Card className="max-w-4xl mx-auto shadow-lg card-hover border-2">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+            <Card className="max-w-4xl mx-auto shadow-lg card-hover border-2 bg-black">
+              <CardHeader className="bg-black">
                 <CardTitle className="text-2xl">股票技术分析</CardTitle>
                 <CardDescription className="text-base">
                   输入股票代码，系统将自动识别市场并进行全面分析
@@ -234,8 +234,8 @@ export default function StockAnalysis() {
                           onClick={() => setSelectedStock(candidate)}
                           className={`p-4 rounded-lg border-2 text-left transition-smooth hover:shadow-md ${
                             selectedStock?.symbol === candidate.symbol
-                              ? 'border-primary bg-blue-50'
-                              : 'border-gray-200 hover:border-primary/50'
+                              ? 'border-primary bg-gray-900'
+                              : 'border-gray-700 hover:border-primary/50 bg-gray-900'
                           }`}
                         >
                           <div className="font-semibold text-lg">
@@ -252,7 +252,7 @@ export default function StockAnalysis() {
 
                 {/* 已选股票 */}
                 {selectedStock && (
-                  <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-primary/30 animate-fade-in">
+                  <Card className="bg-gray-900 border-2 border-primary/30 animate-fade-in">
                     <CardContent className="pt-6">
                       <div className="flex items-start justify-between">
                         <div>
