@@ -71,6 +71,19 @@ export async function getIntradayData(
     return cached;
   }
   
+  // 美股使用Yahoo Finance API获取实时数据
+  if (market === 'US') {
+    const { getUSIntradayDataFromYahoo } = await import('./yahoo-finance-intraday.service.js');
+    const yahooData = await getUSIntradayDataFromYahoo(symbol);
+    if (yahooData) {
+      // 缓存结果
+      CacheService.setIntradayCache(symbol, market, yahooData);
+      return yahooData;
+    }
+    // 如果Yahoo Finance失败，回退到腾讯API
+    console.log('[IntradayData] Yahoo Finance failed, falling back to Tencent API');
+  }
+  
   try {
     const tencentSymbol = convertToTencentSymbol(symbol, market);
     const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${tencentSymbol}`;
