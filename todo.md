@@ -551,3 +551,14 @@
 - [x] TypeScript编译通过（0错误）
 - [x] 服务器重启成功
 - [ ] 保存检查点并交付
+
+## 紧急BUG修复 - 模拟交易盈亏计算错误（用户反馈）
+- [x] 诊断9988亏损95.87%的原因：未平仓持仓未按市值计算
+- [x] 检查资金计算逻辑：只计算了现金，没有加上持仓市值
+- [x] 排查588000没有信号：数据源只返回1个数据点，无法生成信号
+- [x] 修复trading-simulation.service.ts：添加currentPrice参数和openPositionsValue计算
+- [x] 修改intraday.routes.ts：传递当前价格给calculateTradingSimulation
+- [x] 更新TradingSimulationCard：显示现金和持仓市值
+- [x] 测试9988：盈亏+57元(+0.57%)，数据合理
+- [x] 测试588000：数据源限制，非系统bug
+- [ ] 保存检查点并交付

@@ -65,7 +65,13 @@ router.get('/data', async (req, res) => {
     const initialCapital = req.query.initialCapital 
       ? parseFloat(req.query.initialCapital as string) 
       : 10000;
-    const tradingSimulation = calculateTradingSimulation(signals, initialCapital);
+    
+    // 获取当前价格（用于计算未平仓市值）
+    const currentPrice = intradayData.data.length > 0 
+      ? intradayData.data[intradayData.data.length - 1].price 
+      : 0;
+    
+    const tradingSimulation = calculateTradingSimulation(signals, initialCapital, currentPrice);
     
     res.json({
       symbol: intradayData.symbol,
