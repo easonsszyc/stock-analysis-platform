@@ -160,11 +160,11 @@ export function RealtimePriceCard({
             </div>
             <div>
               <div className="text-muted-foreground">最高</div>
-              <div className="font-semibold text-green-500">{quote.high.toFixed(2)}</div>
+              <div className="font-semibold text-red-500">{quote.high.toFixed(2)}</div>
             </div>
             <div>
               <div className="text-muted-foreground">最低</div>
-              <div className="font-semibold text-red-500">{quote.low.toFixed(2)}</div>
+              <div className="font-semibold text-green-500">{quote.low.toFixed(2)}</div>
             </div>
             <div className="col-span-2">
               <div className="text-muted-foreground">成交量</div>

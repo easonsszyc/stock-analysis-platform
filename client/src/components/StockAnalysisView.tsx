@@ -6,6 +6,7 @@ import type { StockAnalysis } from '@shared/stock-types';
 import { StockChart } from './StockChart';
 import { TradingStrategyCard } from './TradingStrategyCard';
 import { RealtimePriceCard } from './RealtimePriceCard';
+import { IntradayChart } from './IntradayChart';
 
 interface StockAnalysisViewProps {
   analysis: StockAnalysis & {
@@ -84,6 +85,12 @@ export function StockAnalysisView({ analysis }: StockAnalysisViewProps) {
         market={stockInfo.market || 'US'}
         autoRefresh={true}
         refreshInterval={30}
+      />
+
+      {/* 分时走势图和智能买卖点 */}
+      <IntradayChart 
+        symbol={stockInfo.symbol}
+        market={stockInfo.market || 'US'}
       />
 
       {/* 股票基本信息 */}
