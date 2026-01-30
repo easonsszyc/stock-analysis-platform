@@ -3,6 +3,7 @@
  * 使用腾讯财经API获取实时行情数据
  */
 import * as iconv from 'iconv-lite';
+import { getUSMarketStatus } from '../utils/market-status';
 
 interface RealtimeQuote {
   symbol: string;
@@ -55,7 +56,6 @@ function parseTencentData(rawData: string, originalSymbol: string): RealtimeQuot
       const changePercent = parseFloat(fields[32]) || 0;
       
       // 获取美股交易时段标签
-      const { getUSMarketStatus } = require('../utils/market-status');
       const marketStatus = getUSMarketStatus();
       
       return {
