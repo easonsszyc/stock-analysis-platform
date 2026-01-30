@@ -4,15 +4,15 @@
  */
 import { useState, useEffect } from 'react';
 import {
-  LineChart,
+  ComposedChart,
   Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   ReferenceDot,
-  Legend,
 } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -202,9 +202,67 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
 
   // 渲染买卖信号标注
   const renderSignals = () => {
-    return signals.map((signal, index) => {
-      const dataPoint = chartData.find(d => d.time === signal.time);
-      if (!dataPoint) return null;
+    console.log(`[IntradayChart] Rendering ${signals.length} signals`);
+    console.log('[IntradayChart] First signal:', signals[0]);
+    console.log('[IntradayChart] First chartData:', chartData[0]);
+    console.log('[IntradayChart] chartData length:', chartData.length);
+    
+    // 辅助函数：将时间字符串转换为分钟数（从00:00开始）
+    const timeToMinutes = (timeStr: string): number => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+    
+    let matchedCount = 0;
+    let skippedCount = 0;
+    
+    const result = signals.map((signal, index) => {
+      // 策略1: 直接匹配time
+      let dataPoint = chartData.find(d => d.time === signal.time);
+      
+      // 策略2: 通过价格范围匹配（宽松匹配，允许1%误差）
+      if (!dataPoint) {
+        dataPoint = chartData.find(d => 
+          Math.abs(d.price - signal.price) / signal.price < 0.01
+        );
+      }
+      
+      // 策略3: 通过时间范围匹配，找到最接近的chartData点
+      if (!dataPoint) {
+        const signalMinutes = timeToMinutes(signal.time);
+        let closestPoint = chartData[0];
+        let minDiff = Math.abs(timeToMinutes(chartData[0].time) - signalMinutes);
+        
+        for (const point of chartData) {
+          const diff = Math.abs(timeToMinutes(point.time) - signalMinutes);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestPoint = point;
+          }
+        }
+        
+        // 只有时间差在5分钟以内才使用该点
+        if (minDiff <= 5) {
+          dataPoint = closestPoint;
+          if (index < 3) {
+            console.log(`[IntradayChart] Matched signal ${signal.time} to chartData ${closestPoint.time} (diff: ${minDiff} min)`);
+          }
+        }
+      }
+      
+      // 如果还是找不到匹配的点，跳过该信号
+      if (!dataPoint) {
+        skippedCount++;
+        if (index < 3) {
+          console.warn(`[IntradayChart] Skipping signal at ${signal.time} - no matching chartData point found`);
+        }
+        return null;
+      }
+      
+      matchedCount++;
+      if (index < 3) {
+        console.log(`[IntradayChart] Matched signal #${index}: signal.time=${signal.time}, dataPoint.time=${dataPoint.time}, dataPoint.price=${dataPoint.price}`);
+      }
       
       // 判断是否为共振信号（高亮显示）
       const isResonance = signal.resonance && signal.resonance.level >= 2;
@@ -214,8 +272,8 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
         <>
           <ReferenceDot
             key={index}
-            x={signal.time}
-            y={signal.price}
+            x={dataPoint.time}
+            y={dataPoint.price}
             r={isResonance ? 8 : 6}
             fill={fillColor}
             stroke="#fff"
@@ -230,8 +288,8 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
           {isResonance && (
             <ReferenceDot
               key={`${index}-outer`}
-              x={signal.time}
-              y={signal.price}
+              x={dataPoint.time}
+              y={dataPoint.price}
               r={12}
               fill="none"
               stroke={fillColor}
@@ -247,6 +305,10 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
         </>
       );
     });
+    
+    console.log(`[IntradayChart] Signal matching summary: matched=${matchedCount}, skipped=${skippedCount}`);
+    
+    return result.filter(item => item !== null);
   };
 
   if (loading) {
@@ -298,7 +360,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
 
       {/* 走势图 */}
       <ResponsiveContainer width="100%" height={400}>
-        <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+        <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#333" />
           <XAxis
             dataKey="time"
@@ -324,7 +386,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
             isAnimationActive={false}
           />
           {renderSignals()}
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
 
       {/* 信号详情弹窗 */}

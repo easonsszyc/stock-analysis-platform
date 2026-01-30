@@ -393,3 +393,18 @@
 - [x] 查看控制台日志和网络请求，定位问题原因（fetch路径错误）
 - [x] 修复IntradayChart组件的API调用路径，使用完整URL
 - [x] 测试修复后的交易信号功能（分时图正常加载，信号生成逻辑已优化）
+
+## 紧急问题 - 信号点只显示1个而不是31个
+
+- [x] 检查IntradayChart组件的renderSignals函数
+- [x] 查看信号点过滤逻辑（time匹配失败导致过滤）
+- [x] 检查ReferenceDot的渲染条件
+- [x] 修复信号点渲染问题，使用价格匹配和临时数据点
+- [x] 测试修复后的信号点显示功能
+
+## 紧急修复 - 信号点不显示问题
+
+- [x] 发现ReferenceDot只能在ComposedChart中使用，不能在LineChart中使用
+- [x] 将IntradayChart组件的LineChart改为ComposedChart
+- [x] 保持Line组件和其他配置不变
+- [x] 测试修复后的信号点显示（33个信号点全部正常显示）
