@@ -43,39 +43,49 @@
 }
 
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
+  /* 金融分析专业配色 - 以蓝色为主色调 */
+  --primary: oklch(0.5 0.15 250); /* 深蓝色 */
+  --primary-foreground: oklch(0.98 0 0);
+  --sidebar-primary: oklch(0.45 0.15 250);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  
+  /* 图表颜色 - 专业金融图表配色 */
+  --chart-1: oklch(0.65 0.18 250); /* 主趋势线 */
+  --chart-2: oklch(0.55 0.15 150); /* 成交量 */
+  --chart-3: oklch(0.6 0.12 30); /* 警告色 */
+  --chart-4: oklch(0.5 0.15 350); /* 强调色 */
+  --chart-5: oklch(0.45 0.1 250); /* 辅助线 */
+  
+  --radius: 0.75rem; /* 增加圆角 */
+  --background: oklch(0.99 0 0); /* 淡灰背景 */
+  --foreground: oklch(0.2 0.01 250);
+  --card: oklch(1 0 0); /* 纯白卡片 */
+  --card-foreground: oklch(0.2 0.01 250);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
+  --popover-foreground: oklch(0.2 0.01 250);
+  --secondary: oklch(0.96 0.005 250);
+  --secondary-foreground: oklch(0.3 0.01 250);
+  --muted: oklch(0.95 0.005 250);
+  --muted-foreground: oklch(0.5 0.01 250);
+  --accent: oklch(0.96 0.01 250);
+  --accent-foreground: oklch(0.2 0.01 250);
+  --destructive: oklch(0.55 0.22 25); /* 红色警告 */
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.9 0.005 250);
+  --input: oklch(0.98 0 0);
+  --ring: oklch(0.5 0.15 250);
+  --sidebar: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0.2 0.01 250);
+  --sidebar-accent: oklch(0.95 0.005 250);
+  --sidebar-accent-foreground: oklch(0.2 0.01 250);
+  --sidebar-border: oklch(0.9 0.005 250);
+  --sidebar-ring: oklch(0.5 0.15 250);
+  
+  /* 自定义颜色 - 股票分析专用 */
+  --success: oklch(0.55 0.15 145); /* 上涨绿色 */
+  --danger: oklch(0.55 0.22 25); /* 下跌红色 */
+  --warning: oklch(0.65 0.15 85); /* 警告黄色 */
+  --info: oklch(0.6 0.12 220); /* 信息蓝色 */
 }
 
 .dark {
@@ -173,5 +183,81 @@
       padding-right: 2rem;
       max-width: 1280px; /* Standard content width */
     }
+  }
+}
+/* 自定义动画和过渡效果 */
+@layer utilities {
+  /* 平滑过渡 */
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* 卡片悬停效果 */
+  .card-hover {
+    transition: all 0.3s ease;
+  }
+  
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* 渐入动画 */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.4s ease-out;
+  }
+  
+  /* 脉冲动画 */
+  @keyframes pulse-soft {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+  
+  .animate-pulse-soft {
+    animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  /* 股票涨跌颜色 */
+  .text-up {
+    color: var(--success);
+  }
+  
+  .text-down {
+    color: var(--danger);
+  }
+  
+  .bg-up {
+    background-color: var(--success);
+  }
+  
+  .bg-down {
+    background-color: var(--danger);
+  }
+  
+  /* 渐变背景 */
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, oklch(0.5 0.15 250) 0%, oklch(0.45 0.12 260) 100%);
+  }
+  
+  /* 玻璃态效果 */
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 }

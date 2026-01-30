@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, TrendingUp, ArrowUpDown, Loader2 } from 'lucide-react';
+import { Search, TrendingUp, ArrowUpDown, Loader2, Sparkles, BarChart3 } from 'lucide-react';
 import { StockAnalysisView } from '../components/StockAnalysisView';
 import { StockComparisonView } from '../components/StockComparisonView';
 
@@ -103,30 +103,10 @@ export default function StockAnalysis() {
 
     setAnalyzing(true);
     try {
-      // 首先搜索每个股票代码
-      const searchPromises = validSymbols.map(async (query) => {
-        const response = await fetch(`/api/stock/search?query=${encodeURIComponent(query.trim())}`);
-        const result = await response.json();
-        return result.success && result.data.length > 0 ? result.data[0] : null;
-      });
-
-      const stocks = await Promise.all(searchPromises);
-      const validStocks = stocks.filter(s => s !== null);
-
-      if (validStocks.length < 2) {
-        alert('部分股票代码无效，请检查');
-        setAnalyzing(false);
-        return;
-      }
-
-      // 使用第一个股票的市场作为基准
-      const market = validStocks[0].market;
-      const symbols = validStocks.map(s => s.symbol);
-
       const response = await fetch('/api/stock/compare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbols, market, period })
+        body: JSON.stringify({ symbols: validSymbols, period })
       });
 
       const result = await response.json();
@@ -144,166 +124,215 @@ export default function StockAnalysis() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto py-6">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            智能股票技术分析平台
-          </h1>
-          <p className="text-gray-600 mt-2">支持中国大陆、香港和美国市场的专业技术分析</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      {/* Hero Section */}
+      <div className="bg-gradient-primary text-white py-16">
+        <div className="container">
+          <div className="max-w-4xl mx-auto text-center space-y-4 animate-fade-in">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <BarChart3 className="w-12 h-12" />
+              <h1 className="text-4xl md:text-5xl font-bold">智能股票技术分析平台</h1>
+            </div>
+            <p className="text-xl text-blue-100">
+              支持中国大陆、香港和美国市场的专业技术分析
+            </p>
+            <div className="flex items-center justify-center gap-6 pt-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                <span>单股分析</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                <span>多股对比</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </header>
+      </div>
 
-      <main className="container mx-auto py-8">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'single' | 'compare')} className="space-y-6">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
-            <TabsTrigger value="single" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
+      {/* Main Content */}
+      <div className="container py-12">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'single' | 'compare')} className="space-y-8">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 h-12">
+            <TabsTrigger value="single" className="flex items-center gap-2 text-base">
+              <Search className="w-4 h-4" />
               单股分析
             </TabsTrigger>
-            <TabsTrigger value="compare" className="flex items-center gap-2">
-              <ArrowUpDown className="h-4 w-4" />
+            <TabsTrigger value="compare" className="flex items-center gap-2 text-base">
+              <ArrowUpDown className="w-4 h-4" />
               多股对比
             </TabsTrigger>
           </TabsList>
 
           {/* 单股分析 */}
-          <TabsContent value="single" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>股票技术分析</CardTitle>
-                <CardDescription>输入股票代码，系统将自动识别市场并进行全面分析</CardDescription>
+          <TabsContent value="single" className="space-y-8 animate-fade-in">
+            <Card className="max-w-4xl mx-auto shadow-lg card-hover border-2">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+                <CardTitle className="text-2xl">股票技术分析</CardTitle>
+                <CardDescription className="text-base">
+                  输入股票代码，系统将自动识别市场并进行全面分析
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="pt-6 space-y-6">
                 {/* 搜索区域 */}
                 <div className="space-y-4">
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <Label htmlFor="search">股票代码或名称</Label>
-                      <Input
-                        id="search"
-                        placeholder="例如: AAPL, 1530, 600519"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <Button onClick={handleSearch} disabled={searching || !searchQuery.trim()}>
-                        {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-                        搜索
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* 候选列表 */}
-                  {candidates.length > 1 && (
-                    <div className="space-y-2">
-                      <Label>找到多个匹配结果，请选择:</Label>
-                      <div className="grid gap-2">
-                        {candidates.map((candidate) => (
-                          <Button
-                            key={candidate.symbol}
-                            variant={selectedStock?.symbol === candidate.symbol ? "default" : "outline"}
-                            className="justify-start h-auto py-3"
-                            onClick={() => setSelectedStock(candidate)}
-                          >
-                            <div className="text-left">
-                              <div className="font-semibold">
-                                {candidate.symbol} - {candidate.nameCn || candidate.name}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {candidate.exchange} · {candidate.market}市场 · {candidate.currency}
-                              </div>
-                            </div>
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 已选股票 */}
-                  {selectedStock && (
-                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-semibold text-lg">
-                            {selectedStock.symbol} - {selectedStock.nameCn || selectedStock.name}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {selectedStock.exchange} · {selectedStock.market}市场 · {selectedStock.currency}
-                          </div>
-                        </div>
-                        <Button variant="ghost" size="sm" onClick={() => {
-                          setSelectedStock(null);
-                          setCandidates([]);
-                          setSearchQuery('');
-                        }}>
-                          重新搜索
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* 分析参数 */}
-                {selectedStock && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="period">时间周期</Label>
-                      <Select value={period} onValueChange={setPeriod}>
-                        <SelectTrigger id="period">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1mo">1个月</SelectItem>
-                          <SelectItem value="3mo">3个月</SelectItem>
-                          <SelectItem value="6mo">6个月</SelectItem>
-                          <SelectItem value="1y">1年</SelectItem>
-                          <SelectItem value="2y">2年</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
+                  <Label htmlFor="search" className="text-base font-semibold">股票代码或名称</Label>
+                  <div className="flex gap-3">
+                    <Input
+                      id="search"
+                      placeholder="例如: AAPL, 1530, 600519"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                      className="text-lg h-12 border-2 focus:border-primary transition-smooth"
+                      disabled={searching}
+                    />
                     <Button 
-                      onClick={handleAnalyze} 
-                      disabled={analyzing}
-                      className="w-full"
+                      onClick={handleSearch} 
+                      disabled={searching || !searchQuery.trim()}
                       size="lg"
+                      className="px-8 h-12 text-base"
                     >
-                      {analyzing ? (
+                      {searching ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          分析中...
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          搜索中
                         </>
                       ) : (
                         <>
-                          <Search className="mr-2 h-4 w-4" />
-                          开始分析
+                          <Search className="w-4 h-4 mr-2" />
+                          搜索
                         </>
                       )}
                     </Button>
                   </div>
+                </div>
+
+                {/* 候选股票列表 */}
+                {candidates.length > 1 && (
+                  <div className="space-y-3 animate-fade-in">
+                    <Label className="text-base font-semibold">选择股票</Label>
+                    <div className="grid gap-3">
+                      {candidates.map((candidate) => (
+                        <button
+                          key={candidate.symbol}
+                          onClick={() => setSelectedStock(candidate)}
+                          className={`p-4 rounded-lg border-2 text-left transition-smooth hover:shadow-md ${
+                            selectedStock?.symbol === candidate.symbol
+                              ? 'border-primary bg-blue-50'
+                              : 'border-gray-200 hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="font-semibold text-lg">
+                            {candidate.symbol} - {candidate.nameCn || candidate.name}
+                          </div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {candidate.exchange} · {candidate.market}市场 · {candidate.currency}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 已选股票 */}
+                {selectedStock && (
+                  <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-primary/30 animate-fade-in">
+                    <CardContent className="pt-6">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="text-xl font-bold">
+                            {selectedStock.symbol} - {selectedStock.nameCn || selectedStock.name}
+                          </h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {selectedStock.exchange} · {selectedStock.market}市场 · {selectedStock.currency}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedStock(null);
+                            setCandidates([]);
+                            setCurrentAnalysis(null);
+                          }}
+                        >
+                          重新搜索
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 时间周期选择 */}
+                {selectedStock && (
+                  <div className="space-y-3 animate-fade-in">
+                    <Label htmlFor="period" className="text-base font-semibold">时间周期</Label>
+                    <Select value={period} onValueChange={setPeriod}>
+                      <SelectTrigger id="period" className="h-12 text-base border-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1d">1天</SelectItem>
+                        <SelectItem value="5d">5天</SelectItem>
+                        <SelectItem value="1mo">1个月</SelectItem>
+                        <SelectItem value="3mo">3个月</SelectItem>
+                        <SelectItem value="6mo">6个月</SelectItem>
+                        <SelectItem value="1y">1年</SelectItem>
+                        <SelectItem value="2y">2年</SelectItem>
+                        <SelectItem value="5y">5年</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* 分析按钮 */}
+                {selectedStock && (
+                  <Button
+                    onClick={handleAnalyze}
+                    disabled={analyzing}
+                    size="lg"
+                    className="w-full h-14 text-lg font-semibold animate-fade-in"
+                  >
+                    {analyzing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        分析中...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-5 h-5 mr-2" />
+                        开始分析
+                      </>
+                    )}
+                  </Button>
                 )}
               </CardContent>
             </Card>
 
             {/* 分析结果 */}
-            {currentAnalysis && <StockAnalysisView analysis={currentAnalysis} />}
+            {currentAnalysis && (
+              <div className="animate-fade-in">
+                <StockAnalysisView analysis={currentAnalysis} />
+              </div>
+            )}
           </TabsContent>
 
           {/* 多股对比 */}
-          <TabsContent value="compare" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>多股票对比分析</CardTitle>
-                <CardDescription>输入多个股票代码进行走势对比（无需添加后缀）</CardDescription>
+          <TabsContent value="compare" className="space-y-8 animate-fade-in">
+            <Card className="max-w-4xl mx-auto shadow-lg card-hover border-2">
+              <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
+                <CardTitle className="text-2xl">多股票走势对比</CardTitle>
+                <CardDescription className="text-base">
+                  输入多个股票代码进行对比分析
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="pt-6 space-y-6">
                 {compareSymbols.map((symbol, index) => (
-                  <div key={index}>
-                    <Label htmlFor={`symbol-${index}`}>股票代码 {index + 1}</Label>
+                  <div key={index} className="space-y-3">
+                    <Label htmlFor={`symbol-${index}`} className="text-base font-semibold">
+                      股票 {index + 1}
+                    </Label>
                     <Input
                       id={`symbol-${index}`}
                       placeholder="例如: AAPL, 1530, 600519"
@@ -313,31 +342,23 @@ export default function StockAnalysis() {
                         newSymbols[index] = e.target.value;
                         setCompareSymbols(newSymbols);
                       }}
+                      className="text-lg h-12 border-2 focus:border-primary transition-smooth"
                     />
                   </div>
                 ))}
 
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCompareSymbols([...compareSymbols, ''])}
-                  >
-                    添加股票
-                  </Button>
-                  {compareSymbols.length > 2 && (
-                    <Button
-                      variant="outline"
-                      onClick={() => setCompareSymbols(compareSymbols.slice(0, -1))}
-                    >
-                      移除最后一个
-                    </Button>
-                  )}
-                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setCompareSymbols([...compareSymbols, ''])}
+                  className="w-full h-12 text-base border-2 border-dashed"
+                >
+                  + 添加更多股票
+                </Button>
 
-                <div>
-                  <Label htmlFor="compare-period">时间周期</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="compare-period" className="text-base font-semibold">时间周期</Label>
                   <Select value={period} onValueChange={setPeriod}>
-                    <SelectTrigger id="compare-period">
+                    <SelectTrigger id="compare-period" className="h-12 text-base border-2">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -346,24 +367,25 @@ export default function StockAnalysis() {
                       <SelectItem value="6mo">6个月</SelectItem>
                       <SelectItem value="1y">1年</SelectItem>
                       <SelectItem value="2y">2年</SelectItem>
+                      <SelectItem value="5y">5年</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <Button 
-                  onClick={handleCompare} 
-                  disabled={analyzing}
-                  className="w-full"
+                <Button
+                  onClick={handleCompare}
+                  disabled={analyzing || compareSymbols.filter(s => s.trim()).length < 2}
                   size="lg"
+                  className="w-full h-14 text-lg font-semibold"
                 >
                   {analyzing ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                       对比中...
                     </>
                   ) : (
                     <>
-                      <ArrowUpDown className="mr-2 h-4 w-4" />
+                      <ArrowUpDown className="w-5 h-5 mr-2" />
                       开始对比
                     </>
                   )}
@@ -372,10 +394,14 @@ export default function StockAnalysis() {
             </Card>
 
             {/* 对比结果 */}
-            {currentComparison && <StockComparisonView comparison={currentComparison} />}
+            {currentComparison && (
+              <div className="animate-fade-in">
+                <StockComparisonView comparison={currentComparison} />
+              </div>
+            )}
           </TabsContent>
         </Tabs>
-      </main>
+      </div>
     </div>
   );
 }

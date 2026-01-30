@@ -1,4 +1,5 @@
-import { callDataApi } from '../_core/dataApi';
+import { callDataApi } from '../_core/dataApi.js';
+import { getDisplayName } from '../data/stock-names-zh.js';
 
 export interface StockSearchResult {
   symbol: string;
@@ -88,10 +89,13 @@ export class StockSearchService {
       const result = response.chart.result[0];
       const meta = result.meta;
 
+      const displayName = getDisplayName(meta.symbol, meta.longName, meta.shortName);
+      const isChineseName = displayName !== meta.longName && displayName !== meta.shortName && displayName !== meta.symbol;
+      
       return {
         symbol: meta.symbol,
-        name: meta.longName || meta.shortName || symbol,
-        nameCn: this.getChineseName(meta.longName, meta.shortName),
+        name: displayName,
+        nameCn: isChineseName ? displayName : undefined,
         exchange: meta.exchangeName,
         market: market,
         currency: meta.currency
@@ -110,48 +114,7 @@ export class StockSearchService {
     return 'US';
   }
 
-  /**
-   * 获取中文名称（简单映射，实际应该从数据库或API获取）
-   */
-  private getChineseName(longName?: string, shortName?: string): string | undefined {
-    const name = longName || shortName || '';
-    
-    // 常见公司的中文名称映射
-    const nameMap: Record<string, string> = {
-      'Apple Inc.': '苹果公司',
-      'Microsoft Corporation': '微软公司',
-      'Alphabet Inc.': '谷歌',
-      'Amazon.com, Inc.': '亚马逊',
-      'Tesla, Inc.': '特斯拉',
-      'Meta Platforms, Inc.': 'Meta平台',
-      'NVIDIA Corporation': '英伟达',
-      '3SBio Inc.': '三生制药',
-      'Tencent Holdings Limited': '腾讯控股',
-      'Alibaba Group Holding Limited': '阿里巴巴',
-      'Meituan': '美团',
-      'JD.com, Inc.': '京东',
-      'Baidu, Inc.': '百度',
-      'NetEase, Inc.': '网易',
-      'Xiaomi Corporation': '小米集团',
-      'BYD Company Limited': '比亚迪',
-      'CATL': '宁德时代',
-      'Kweichow Moutai Co., Ltd.': '贵州茅台'
-    };
 
-    // 尝试精确匹配
-    if (nameMap[name]) {
-      return nameMap[name];
-    }
-
-    // 尝试部分匹配
-    for (const [key, value] of Object.entries(nameMap)) {
-      if (name.includes(key) || key.includes(name)) {
-        return value;
-      }
-    }
-
-    return undefined;
-  }
 }
 
 export const stockSearchService = new StockSearchService();

@@ -1,5 +1,9 @@
-// 股票市场类型
+// 股票分析相关类型定义
 export type MarketType = 'CN' | 'HK' | 'US';
+
+// 时间周期类型
+export type TimeRange = '1d' | '5d' | '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y';
+export type Interval = '1m' | '2m' | '5m' | '15m' | '30m' | '60m' | '1d' | '1wk' | '1mo';
 
 // 股票基本信息
 export interface StockInfo {

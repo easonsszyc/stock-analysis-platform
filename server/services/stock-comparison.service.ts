@@ -1,8 +1,9 @@
-import type { 
+import type {
   MarketType, 
   StockInfo, 
   PriceDataPoint, 
-  StockComparison
+  StockComparison,
+  TimeRange
 } from '../../shared/stock-types';
 
 type PerformanceMetrics = {
@@ -20,7 +21,7 @@ class StockComparisonService {
   async compareStocks(
     symbols: string[],
     market: MarketType,
-    period: string = '1y'
+    period: TimeRange = '1y'
   ): Promise<StockComparison> {
     // 获取所有股票的数据
     const stocksData = await Promise.all(

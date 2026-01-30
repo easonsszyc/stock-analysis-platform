@@ -1,4 +1,5 @@
-import type { StockInfo, PriceDataPoint, MarketType } from '../../shared/stock-types';
+import type { StockInfo, PriceDataPoint, MarketType, TimeRange, Interval } from '../../shared/stock-types';
+import { getDisplayName } from '../data/stock-names-zh.js';
 
 // 数据API客户端（使用Manus提供的API）
 class StockDataService {
@@ -64,7 +65,8 @@ class StockDataService {
   async getStockData(
     symbol: string,
     market: MarketType,
-    period: string = '1y'
+    range: TimeRange = '1y',
+    interval: Interval = '1d'
   ): Promise<{ stockInfo: StockInfo; priceData: PriceDataPoint[] }> {
     const apiClient = await this.getApiClient();
     if (!apiClient) {
@@ -79,8 +81,8 @@ class StockDataService {
         query: {
           symbol: formattedSymbol,
           region: region,
-          interval: '1d',
-          range: period,
+          interval: interval,
+          range: range,
           includeAdjustedClose: 'true',
           events: 'div,split'
         }
@@ -95,10 +97,12 @@ class StockDataService {
       const timestamps = result.timestamp;
       const quotes = result.indicators.quote[0];
 
-      // 构建股票基本信息
+      // 构建股票基本信息（优先使用中文名称）
+      const displayName = getDisplayName(formattedSymbol, meta.longName, meta.shortName);
+      
       const stockInfo: StockInfo = {
         symbol: formattedSymbol,
-        name: meta.longName || meta.symbol,
+        name: displayName,
         market: market,
         currency: meta.currency,
         exchange: meta.exchangeName,
