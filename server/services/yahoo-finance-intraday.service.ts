@@ -70,13 +70,17 @@ export async function getUSIntradayDataFromYahoo(
     
     // 获取数据的实际日期（从第一个时间戳提取）
     const dataDate = timestamps.length > 0 
-      ? new Date(timestamps[0] * 1000).toLocaleString('en-US', {
+      ? new Date(timestamps[0] * 1000).toLocaleDateString('zh-CN', {
           timeZone: 'America/New_York',
           year: 'numeric',
-          month: '2-digit',
-          day: '2-digit'
-        }).split(',')[0].split('/').reverse().join('-').replace(/(\d{2})-(\d{2})-(\d{4})/, '$3-$1-$2')
-      : new Date().toISOString().split('T')[0];
+          month: 'long',
+          day: 'numeric'
+        })
+      : new Date().toLocaleDateString('zh-CN', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
     
     return {
       symbol,
