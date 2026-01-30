@@ -72,6 +72,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedSignal, setSelectedSignal] = useState<TradingSignal | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [hoveredSignal, setHoveredSignal] = useState<TradingSignal | null>(null);
   const [currentPrice, setCurrentPrice] = useState(0);
 
   // 获取分时数据和买卖信号
@@ -285,10 +286,15 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
     const isResonance = signal.resonance && signal.resonance.level >= 2;
     const fillColor = signal.type === 'buy' ? '#ef4444' : '#22c55e';
     const strokeColor = signal.type === 'buy' ? '#dc2626' : '#16a34a';
-    const radius = isResonance ? 10 : 7;
     
-    // 提取交易ID的数字部分（例如 "trade-5" -> "5"）
-    const tradeNumber = signal.tradeId ? signal.tradeId.split('-')[1] : '';
+    // 检查是否是悬停的信号或其配对信号
+    const isHovered = hoveredSignal?.time === signal.time;
+    const isPaired = hoveredSignal?.tradeId && signal.tradeId === hoveredSignal.tradeId && hoveredSignal.time !== signal.time;
+    
+    // 根据状态调整尺寸
+    let radius = isResonance ? 10 : 7;
+    if (isHovered) radius += 3; // 悬停时放大
+    if (isPaired) radius += 2; // 配对信号也放大
     
     return (
       <g>
@@ -299,13 +305,28 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
           fill={fillColor}
           stroke={strokeColor}
           strokeWidth={isResonance ? 3 : 2.5}
-          opacity={0.9}
+          opacity={isHovered || isPaired ? 1 : 0.9}
           style={{ cursor: 'pointer' }}
           onClick={() => {
             setSelectedSignal(signal);
             setDialogOpen(true);
           }}
+          onMouseEnter={() => setHoveredSignal(signal)}
+          onMouseLeave={() => setHoveredSignal(null)}
         />
+        {/* 配对高亮效果 */}
+        {isPaired && (
+          <circle
+            cx={cx}
+            cy={cy}
+            r={radius + 5}
+            fill="none"
+            stroke={fillColor}
+            strokeWidth={2}
+            opacity={0.6}
+            style={{ pointerEvents: 'none' }}
+          />
+        )}
         {isResonance && (
           <circle
             cx={cx}
@@ -323,24 +344,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
             }}
           />
         )}
-        {/* 显示交易ID数字 */}
-        {tradeNumber && (
-          <text
-            x={cx}
-            y={cy - radius - 8}
-            textAnchor="middle"
-            fill={fillColor}
-            fontSize="10"
-            fontWeight="bold"
-            style={{ cursor: 'pointer' }}
-            onClick={() => {
-              setSelectedSignal(signal);
-              setDialogOpen(true);
-            }}
-          >
-            {tradeNumber}
-          </text>
-        )}
+
       </g>
     );
   };
