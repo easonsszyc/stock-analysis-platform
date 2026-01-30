@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import stockRoutes from "../routes/stock.routes";
 import realtimeRoutes from "../routes/realtime.routes";
 import intradayRoutes from "../routes/intraday.routes";
+import backtestRoutes from "../routes/backtest.routes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -44,6 +45,8 @@ async function startServer() {
   app.use("/api/realtime", realtimeRoutes);
   // Intraday data and trading signals API routes
   app.use("/api/intraday", intradayRoutes);
+  // Backtest API routes
+  app.use("/api/backtest", backtestRoutes);
   // tRPC API
   app.use(
     "/api/trpc",

@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { BarChart3, Star, Moon, Sun, Menu, X } from 'lucide-react';
+import { BarChart3, Star, Moon, Sun, Menu, X, FlaskConical } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +18,7 @@ export function Header() {
   const navItems = [
     { path: '/', label: '股票分析', icon: BarChart3 },
     { path: '/watchlist', label: '自选股', icon: Star },
+    { path: '/strategy-lab', label: '策略实验室', icon: FlaskConical },
   ];
 
   const handleNavClick = (path: string) => {

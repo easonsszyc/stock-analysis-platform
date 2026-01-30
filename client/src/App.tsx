@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import StockAnalysis from "./pages/StockAnalysis";
 import Watchlist from "./pages/Watchlist";
+import StrategyLab from "./pages/StrategyLab";
 import { Header } from "./components/Header";
 
 function Router() {
@@ -14,6 +15,7 @@ function Router() {
     <Switch>
       <Route path={"/"} component={StockAnalysis} />
       <Route path={"/watchlist"} component={Watchlist} />
+      <Route path={"/strategy-lab"} component={StrategyLab} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
