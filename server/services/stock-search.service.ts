@@ -11,10 +11,13 @@ export interface StockSearchResult {
 }
 
 export class StockSearchService {
+  private quotaExhaustedDetected = false;
+
   /**
    * 智能搜索股票 - 自动识别市场并返回候选列表
    */
   async searchStock(query: string): Promise<StockSearchResult[]> {
+    this.quotaExhaustedDetected = false;
     const candidates: StockSearchResult[] = [];
     
     // 清理输入
@@ -48,7 +51,7 @@ export class StockSearchService {
     }
     
     // 如果没有找到任何候选，尝试所有市场
-    if (candidates.length === 0) {
+    if (candidates.length === 0 && !this.quotaExhaustedDetected) {
       const usResult = await this.tryFetchStock(cleanQuery, 'US');
       if (usResult) candidates.push(usResult);
       
@@ -60,6 +63,11 @@ export class StockSearchService {
       
       const szResult = await this.tryFetchStock(`${cleanQuery}.SZ`, 'CN');
       if (szResult) candidates.push(szResult);
+    }
+    
+    // 如果检测到配额耗尽，抛出特定错误
+    if (this.quotaExhaustedDetected && candidates.length === 0) {
+      throw new Error('API_QUOTA_EXHAUSTED: Yahoo Finance API quota has been exhausted. Please try again later.');
     }
     
     return candidates;
@@ -109,6 +117,12 @@ export class StockSearchService {
       };
     } catch (error: any) {
       console.error(`[StockSearch] Error fetching ${symbol}:`, error.message);
+      
+      // 检测是否为API配额耗尽错误
+      if (error.message && error.message.includes('usage exhausted')) {
+        this.quotaExhaustedDetected = true;
+      }
+      
       return null;
     }
   }

@@ -36,6 +36,16 @@ router.get('/search', async (req, res) => {
     } as ApiResponse<typeof results>);
   } catch (error: any) {
     console.error('Search stock error:', error);
+    
+    // 检查是否为API配额耗尽错误
+    if (error.message && error.message.includes('API_QUOTA_EXHAUSTED')) {
+      return res.status(503).json({
+        success: false,
+        error: '数据服务暂时不可用，请稍后再试。如果问题持续，请联系Manus支持团队。',
+        errorCode: 'API_QUOTA_EXHAUSTED'
+      } as ApiResponse<null>);
+    }
+    
     res.status(500).json({
       success: false,
       error: error.message || '搜索失败'

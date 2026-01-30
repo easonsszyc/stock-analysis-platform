@@ -49,7 +49,11 @@ export default function StockAnalysis() {
         if (result.data.length === 1) {
           setSelectedStock(result.data[0]);
         }
+      } else if (!result.success) {
+        // API错误（包括配额耗尽）
+        alert(result.error || '搜索失败，请稍后再试');
       } else {
+        // 真的没找到股票
         alert('未找到匹配的股票，请检查代码是否正确');
       }
     } catch (error) {
