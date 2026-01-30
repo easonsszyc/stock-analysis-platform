@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, TrendingUp, ArrowUpDown, Loader2, Sparkles, BarChart3, Moon, Sun } from 'lucide-react';
+import { Search, TrendingUp, ArrowUpDown, Loader2, Sparkles, BarChart3, Moon, Sun, Star } from 'lucide-react';
+import { trpc } from '@/lib/trpc';
+import { Link } from 'wouter';
 import { useTheme } from '@/contexts/ThemeContext';
 import { StockAnalysisView } from '../components/StockAnalysisView';
 import { StockComparisonView } from '../components/StockComparisonView';
@@ -263,17 +265,20 @@ export default function StockAnalysis() {
                             {selectedStock.exchange} · {selectedStock.market}市场 · {selectedStock.currency}
                           </p>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedStock(null);
-                            setCandidates([]);
-                            setCurrentAnalysis(null);
-                          }}
-                        >
-                          重新搜索
-                        </Button>
+                        <div className="flex gap-2">
+                          <AddToWatchlistButton stock={selectedStock} />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedStock(null);
+                              setCandidates([]);
+                              setCurrentAnalysis(null);
+                            }}
+                          >
+                            重新搜索
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -418,5 +423,62 @@ export default function StockAnalysis() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+/**
+ * 添加到自选股按钮组件
+ */
+function AddToWatchlistButton({ stock }: { stock: StockCandidate }) {
+  const [isAdded, setIsAdded] = useState(false);
+
+  // 检查是否已在自选股中
+  const { data: inWatchlist } = trpc.watchlist.check.useQuery(
+    { symbol: stock.symbol },
+    { enabled: !!stock.symbol }
+  );
+
+  // 添加到自选股
+  const addToWatchlist = trpc.watchlist.add.useMutation({
+    onSuccess: () => {
+      setIsAdded(true);
+      alert('已添加到自选股！');
+    },
+    onError: (error) => {
+      alert(`添加失败：${error.message}`);
+    },
+  });
+
+  const handleAdd = () => {
+    addToWatchlist.mutate({
+      symbol: stock.symbol,
+      nameCn: stock.nameCn || stock.name,
+      market: stock.market,
+      exchange: stock.exchange,
+      currency: stock.currency,
+    });
+  };
+
+  if (inWatchlist || isAdded) {
+    return (
+      <Link href="/watchlist">
+        <Button variant="outline" size="sm">
+          <Star className="w-4 h-4 mr-1 fill-yellow-500 text-yellow-500" />
+          已收藏
+        </Button>
+      </Link>
+    );
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleAdd}
+      disabled={addToWatchlist.isPending}
+    >
+      <Star className="w-4 h-4 mr-1" />
+      {addToWatchlist.isPending ? '添加中...' : '添加自选'}
+    </Button>
   );
 }

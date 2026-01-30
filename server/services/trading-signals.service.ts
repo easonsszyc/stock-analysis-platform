@@ -10,9 +10,22 @@ export interface TradingSignal {
   type: 'buy' | 'sell' | 'hold';
   price: number;
   strength: number; // 0-100，信号强度
+  confidence: number; // 0-100，置信度
   reasons: string[]; // 信号原因
   stopLoss?: number; // 止损价
   target?: number; // 目标价
+  indicators?: {
+    rsi?: number;
+    macd?: number;
+    macdSignal?: number;
+    macdHistogram?: number;
+    kdj?: { k: number; d: number; j: number };
+    bollingerBands?: { upper: number; middle: number; lower: number };
+  };
+  resonance?: {
+    level: number; // 0-3，共振级别（几个周期同时出现信号）
+    timeframes: string[]; // 共振的时间周期
+  };
 }
 
 /**
@@ -105,8 +118,24 @@ export function analyzeTradingSignals(data: PriceData[]): TradingSignal[] {
       }
     }
     
-    // 只记录有明确信号的点位
-    if (reasons.length >= 2 && strength >= 40) {
+    // 计算置信度（基于多个因素）
+    let confidence = 0;
+    if (reasons.length >= 3) confidence += 30;
+    else if (reasons.length >= 2) confidence += 20;
+    if (strength >= 70) confidence += 30;
+    else if (strength >= 50) confidence += 20;
+    else if (strength >= 40) confidence += 10;
+    
+    // RSI极端值增加置信度
+    if (rsi[i] < 20 || rsi[i] > 80) confidence += 20;
+    else if (rsi[i] < 30 || rsi[i] > 70) confidence += 10;
+    
+    // MACD和价格趋势一致增加置信度
+    if (macdCross && currentPrice > prevPrice) confidence += 20;
+    if (macdCrossDown && currentPrice < prevPrice) confidence += 20;
+    
+    // 只记录有明确信号的点位（降低阈值，确保分时图也能生成信号）
+    if (reasons.length >= 1 && strength >= 30) {
       // 计算止损和目标价
       let stopLoss: number | undefined;
       let target: number | undefined;
@@ -124,9 +153,21 @@ export function analyzeTradingSignals(data: PriceData[]): TradingSignal[] {
         type: signalType,
         price: currentPrice,
         strength: Math.min(strength, 100),
+        confidence: Math.min(confidence, 100),
         reasons,
         stopLoss,
         target,
+        indicators: {
+          rsi: rsi[i],
+          macd: macd.macd[i],
+          macdSignal: macd.signal[i],
+          macdHistogram: macd.histogram[i],
+          bollingerBands: {
+            upper: bb.upper[i],
+            middle: bb.middle[i],
+            lower: bb.lower[i],
+          },
+        },
       });
     }
   }
