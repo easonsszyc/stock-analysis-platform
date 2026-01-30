@@ -109,7 +109,7 @@ export function RealtimePriceCard({
   const borderColor = isPositive ? 'border-red-500/30' : 'border-green-500/30';
 
   return (
-    <Card className={cn('border-2 transition-all duration-300', borderColor, bgColor)}>
+    <Card className="neon-border bg-card/80 backdrop-blur-sm transition-all duration-300">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           {/* 左侧：价格信息 */}
@@ -122,14 +122,14 @@ export function RealtimePriceCard({
             <div className="flex items-baseline gap-4">
               <div
                 className={cn(
-                  'text-5xl font-bold transition-all duration-300',
+                  'text-6xl font-bold transition-all duration-300',
                   changeColor,
                   priceAnimation === 'up' && 'scale-110',
                   priceAnimation === 'down' && 'scale-90'
                 )}
               >
                 {quote.currentPrice.toFixed(2)}
-                <span className="text-2xl ml-2">{quote.currency}</span>
+                <span className="text-3xl ml-2 text-muted-foreground">{quote.currency}</span>
               </div>
 
               <div className={cn('flex items-center gap-2', changeColor)}>
