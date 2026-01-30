@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from 'react';
 import {
-  LineChart,
+  ComposedChart,
   Line,
   XAxis,
   YAxis,
@@ -208,7 +208,9 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
       
       // 判断是否为共振信号（高亮显示）
       const isResonance = signal.resonance && signal.resonance.level >= 2;
+      // 中国市场习惯：红色买入、绿色卖出
       const fillColor = signal.type === 'buy' ? '#ef4444' : '#22c55e';
+      const strokeColor = signal.type === 'buy' ? '#dc2626' : '#16a34a';
       
       return (
         <>
@@ -216,32 +218,32 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
             key={index}
             x={signal.time}
             y={signal.price}
-            r={isResonance ? 8 : 6}
+            r={isResonance ? 10 : 7}
             fill={fillColor}
-            stroke="#fff"
-            strokeWidth={isResonance ? 3 : 2}
+            stroke={strokeColor}
+            strokeWidth={isResonance ? 3 : 2.5}
             onClick={() => {
               setSelectedSignal(signal);
               setDialogOpen(true);
             }}
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: 'pointer', opacity: 0.9 }}
           />
-          {/* 共振信号显示外圈 */}
+          {/* 共振信号显示外圈（更大、更醒目） */}
           {isResonance && (
             <ReferenceDot
               key={`${index}-outer`}
               x={signal.time}
               y={signal.price}
-              r={12}
+              r={15}
               fill="none"
               stroke={fillColor}
-              strokeWidth={2}
-              strokeDasharray="3 3"
+              strokeWidth={2.5}
+              strokeDasharray="4 4"
               onClick={() => {
                 setSelectedSignal(signal);
                 setDialogOpen(true);
               }}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer', opacity: 0.8 }}
             />
           )}
         </>
@@ -298,7 +300,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
 
       {/* 走势图 */}
       <ResponsiveContainer width="100%" height={400}>
-        <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+        <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#333" />
           <XAxis
             dataKey="time"
@@ -324,7 +326,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
             isAnimationActive={false}
           />
           {renderSignals()}
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
 
       {/* 信号详情弹窗 */}

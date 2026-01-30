@@ -3,6 +3,7 @@
  * 获取股票的分时数据（1分钟级别）
  */
 import * as iconv from 'iconv-lite';
+import { CacheService } from './cache.service.js';
 
 export interface IntradayDataPoint {
   time: string; // 格式：HH:mm
@@ -63,6 +64,13 @@ export async function getIntradayData(
   symbol: string,
   market: 'US' | 'HK' | 'CN'
 ): Promise<IntradayData | null> {
+  // 检查缓存
+  const cached = CacheService.getIntradayCache(symbol, market);
+  if (cached) {
+    console.log(`[IntradayData] Using cached data for: ${symbol} (${market})`);
+    return cached;
+  }
+  
   try {
     const tencentSymbol = convertToTencentSymbol(symbol, market);
     const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${tencentSymbol}`;
@@ -90,11 +98,16 @@ export async function getIntradayData(
 
     const dataPoints = parseIntradayData(stockData.data.data);
     
-    return {
+    const result = {
       symbol,
       date: stockData.data.date || new Date().toISOString().split('T')[0],
       data: dataPoints,
     };
+    
+    // 缓存结果
+    CacheService.setIntradayCache(symbol, market, result);
+    
+    return result;
   } catch (error) {
     console.error('Error fetching intraday data:', error);
     return null;

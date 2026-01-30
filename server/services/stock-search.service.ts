@@ -1,5 +1,6 @@
 import { callDataApi } from '../_core/dataApi.js';
 import { getDisplayName } from '../data/stock-names-zh.js';
+import { CacheService } from './cache.service.js';
 
 export interface StockSearchResult {
   symbol: string;
@@ -15,6 +16,13 @@ export class StockSearchService {
    * 智能搜索股票 - 自动识别市场并返回候选列表
    */
   async searchStock(query: string): Promise<StockSearchResult[]> {
+    // 检查缓存
+    const cached = CacheService.getSearchCache(query);
+    if (cached) {
+      console.log(`[StockSearch] Using cached result for: ${query}`);
+      return cached;
+    }
+    
     const candidates: StockSearchResult[] = [];
     
     // 清理输入
@@ -60,6 +68,11 @@ export class StockSearchService {
       
       const szResult = await this.tryFetchStock(`${cleanQuery}.SZ`, 'CN');
       if (szResult) candidates.push(szResult);
+    }
+    
+    // 缓存结果
+    if (candidates.length > 0) {
+      CacheService.setSearchCache(query, candidates);
     }
     
     return candidates;
