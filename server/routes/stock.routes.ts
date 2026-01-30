@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { stockDataService } from '../services/stock-data.service';
 import { technicalAnalysisService } from '../services/technical-analysis.service';
 import { stockComparisonService } from '../services/stock-comparison.service';
+import { stockSearchService } from '../services/stock-search.service';
 import type {
   AnalyzeStockRequest,
   CompareStocksRequest,
@@ -14,11 +15,11 @@ import type {
 const router = Router();
 
 /**
- * 搜索股票
+ * 智能搜索股票 - 自动识别市场
  */
 router.get('/search', async (req, res) => {
   try {
-    const { query, market, limit } = req.query as any;
+    const { query } = req.query as any;
 
     if (!query) {
       return res.status(400).json({
@@ -27,11 +28,11 @@ router.get('/search', async (req, res) => {
       } as ApiResponse<null>);
     }
 
-    const results = await stockDataService.searchStock(query, market);
+    const results = await stockSearchService.searchStock(query);
 
     res.json({
       success: true,
-      data: results.slice(0, limit ? parseInt(limit) : 10)
+      data: results
     } as ApiResponse<typeof results>);
   } catch (error: any) {
     console.error('Search stock error:', error);
