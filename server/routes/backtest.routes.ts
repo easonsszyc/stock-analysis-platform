@@ -19,7 +19,7 @@ router.post('/run', async (req, res) => {
     const backtestConfig: BacktestConfig = {
       rsiPeriod: config?.rsiPeriod || 14,
       rsiOverbought: config?.rsiOverbought || 70,
-      rsiOversold: config?.rsiOversold || 30,
+      rsiOversold: config?.rsiOversold || 35,
       macdFast: config?.macdFast || 12,
       macdSlow: config?.macdSlow || 26,
       macdSignal: config?.macdSignal || 9,

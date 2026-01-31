@@ -81,7 +81,7 @@ const TRADING_STYLE_PRESETS: Record<TradingStyle, { label: string; icon: any; co
     description: '中短线，持仓<1天，中频交易',
     config: {
       rsiOverbought: 70,
-      rsiOversold: 30,
+      rsiOversold: 35,
       positionSize: 0.3,
       stopLoss: -0.03,
       takeProfit: 0.05,

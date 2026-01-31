@@ -8,6 +8,7 @@
  */
 
 import { calculateSMA, calculateEMA, calculateATR, calculateRSI } from '../utils/indicators';
+import { getHistoricalData, HistoricalBar } from './historical-data.service';
 
 export interface BacktestConfig {
   // 策略参数
@@ -103,16 +104,6 @@ interface Position {
   stopLossPrice: number;
 }
 
-interface Bar {
-  date: string;
-  time: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
-
 /**
  * 执行策略回测
  */
@@ -123,9 +114,8 @@ export async function runBacktest(
   endDate: string,
   config: BacktestConfig
 ): Promise<BacktestResult> {
-  // TODO: 获取真实历史数据
-  // 当前使用模拟数据演示算法逻辑
-  const bars = generateMockBars(startDate, endDate);
+  // 获取真实历史数据
+  const bars = await getHistoricalData(symbol, market, startDate, endDate, '1d');
   
   const initialCapital = 10000;
   let cash = initialCapital;
@@ -140,17 +130,20 @@ export async function runBacktest(
   const lows = bars.map(b => b.low);
   
   const rsiValues = calculateRSI(closes, config.rsiPeriod);
+  
   const atrValues = calculateATR(highs, lows, closes, config.atrPeriod);
   
-  // 计算MA均线（用于趋势过滤）
+  // 计算MA（用于趋势过滤）
   let maValues: number[] = [];
   if (config.useTrendFilter) {
-    maValues = config.maType === 'SMA' 
-      ? calculateSMA(closes, config.maPeriod)
-      : calculateEMA(closes, config.maPeriod);
+    if (config.maType === 'EMA') {
+      maValues = calculateEMA(closes, config.maPeriod);
+    } else {
+      maValues = calculateSMA(closes, config.maPeriod);
+    }
   }
   
-  // 遍历每个bar，模拟交易
+  // 遍历每个bar，执行交易逻辑
   for (let i = 0; i < bars.length; i++) {
     const bar = bars[i];
     const rsi = rsiValues[i];
@@ -353,55 +346,7 @@ export async function runBacktest(
   return result;
 }
 
-/**
- * 生成模拟K线数据（用于演示）
- * TODO: 替换为真实历史数据API
- */
-function generateMockBars(startDate: string, endDate: string): Bar[] {
-  const bars: Bar[] = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  let currentPrice = 100;
-  let currentDate = new Date(start);
-  
-  while (currentDate <= end) {
-    // 跳过周末
-    if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
-      // 生成当天的分钟级数据（模拟240个bar，4小时交易）
-      for (let minute = 0; minute < 240; minute++) {
-        const hour = 9 + Math.floor(minute / 60);
-        const min = minute % 60;
-        
-        // 模拟价格波动
-        const change = (Math.random() - 0.5) * 2;
-        currentPrice = Math.max(50, Math.min(150, currentPrice + change));
-        
-        const open = currentPrice;
-        const high = currentPrice + Math.random() * 1;
-        const low = currentPrice - Math.random() * 1;
-        const close = low + Math.random() * (high - low);
-        
-        bars.push({
-          date: currentDate.toISOString().split('T')[0],
-          time: `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:00`,
-          open: Math.round(open * 100) / 100,
-          high: Math.round(high * 100) / 100,
-          low: Math.round(low * 100) / 100,
-          close: Math.round(close * 100) / 100,
-          volume: Math.floor(Math.random() * 10000) + 1000,
-        });
-        
-        currentPrice = close;
-      }
-    }
-    
-    // 下一天
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  
-  return bars;
-}
+
 
 /**
  * 计算夏普比率
