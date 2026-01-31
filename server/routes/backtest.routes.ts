@@ -23,8 +23,20 @@ router.post('/run', async (req, res) => {
       macdFast: config?.macdFast || 12,
       macdSlow: config?.macdSlow || 26,
       macdSignal: config?.macdSignal || 9,
+      
+      // 趋势过滤模块
+      useTrendFilter: config?.useTrendFilter !== undefined ? config.useTrendFilter : true,
+      maPeriod: config?.maPeriod || 20,
+      maType: config?.maType || 'SMA',
+      
       positionSize: config?.positionSize || 0.3,
       maxPositions: config?.maxPositions || 5,
+      
+      // ATR动态止损
+      useATRStop: config?.useATRStop !== undefined ? config.useATRStop : true,
+      atrPeriod: config?.atrPeriod || 14,
+      atrMultiplier: config?.atrMultiplier || 2.0,
+      
       stopLoss: config?.stopLoss || -0.03,
       takeProfit: config?.takeProfit || 0.05,
       commissionRate: config?.commissionRate || 0.003,

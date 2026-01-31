@@ -1,7 +1,13 @@
 /**
  * 策略回测服务
  * 使用历史数据测试交易策略的表现
+ * 
+ * 核心改进：
+ * 1. 趋势过滤模块：只在价格 > MA 且 RSI < 超卖线时买入，避免逆势抄底
+ * 2. ATR动态止损：止损价 = 入场价 - ATR * ATR_Multiplier，适应不同波动率标的
  */
+
+import { calculateSMA, calculateEMA, calculateATR, calculateRSI } from '../utils/indicators';
 
 export interface BacktestConfig {
   // 策略参数
@@ -12,12 +18,20 @@ export interface BacktestConfig {
   macdSlow: number;               // MACD慢线周期
   macdSignal: number;             // MACD信号线周期
   
+  // 趋势过滤模块（新增）
+  useTrendFilter: boolean;        // 是否启用趋势过滤
+  maPeriod: number;               // MA均线周期（默认20或60）
+  maType: 'SMA' | 'EMA';          // MA类型（简单移动平均或指数移动平均）
+  
   // 仓位管理
   positionSize: number;           // 单次投入比例（0.1-0.5）
   maxPositions: number;           // 最大持仓数量
   
-  // 风险控制
-  stopLoss: number;               // 止损线（负数，如-0.03表示-3%）
+  // 风险控制（动态ATR止损）
+  useATRStop: boolean;            // 是否启用ATR动态止损
+  atrPeriod: number;              // ATR周期（默认14）
+  atrMultiplier: number;          // ATR倍数（默认2.0）
+  stopLoss: number;               // 固定止损线（负数，如-0.03表示-3%，仅当useATRStop=false时使用）
   takeProfit: number;             // 止盈线（正数，如0.05表示5%）
   
   // 交易成本
@@ -78,7 +92,25 @@ export interface TradeRecord {
   shares: number;
   profit: number | null;
   profitPercent: number | null;
-  exitReason: string | null;      // 'signal' | 'stop_loss' | 'take_profit' | 'open'
+  exitReason: string | null;      // 'signal' | 'stop_loss' | 'take_profit' | 'atr_stop' | 'open'
+  stopLossPrice: number | null;   // 止损价（用于ATR动态止损）
+}
+
+interface Position {
+  entryIndex: number;
+  entryPrice: number;
+  shares: number;
+  stopLossPrice: number;
+}
+
+interface Bar {
+  date: string;
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
 }
 
 /**
@@ -91,206 +123,284 @@ export async function runBacktest(
   endDate: string,
   config: BacktestConfig
 ): Promise<BacktestResult> {
-  // TODO: 获取历史数据（需要实现历史数据API）
-  // 这里先返回模拟数据，后续需要对接真实历史数据源
+  // TODO: 获取真实历史数据
+  // 当前使用模拟数据演示算法逻辑
+  const bars = generateMockBars(startDate, endDate);
   
   const initialCapital = 10000;
-  
-  // 生成模拟交易记录
-  const trades: TradeRecord[] = [
-    {
-      tradeId: 1,
-      entryDate: '2025-11-05',
-      entryTime: '10:30:00',
-      entryPrice: 100.50,
-      exitDate: '2025-11-05',
-      exitTime: '14:20:00',
-      exitPrice: 102.30,
-      shares: 100,
-      profit: 180,
-      profitPercent: 1.79,
-      exitReason: 'signal',
-    },
-    {
-      tradeId: 2,
-      entryDate: '2025-11-08',
-      entryTime: '09:45:00',
-      entryPrice: 102.00,
-      exitDate: '2025-11-08',
-      exitTime: '11:30:00',
-      exitPrice: 101.20,
-      shares: 100,
-      profit: -80,
-      profitPercent: -0.78,
-      exitReason: 'stop_loss',
-    },
-    {
-      tradeId: 3,
-      entryDate: '2025-11-12',
-      entryTime: '10:15:00',
-      entryPrice: 103.50,
-      exitDate: '2025-11-12',
-      exitTime: '15:00:00',
-      exitPrice: 105.80,
-      shares: 95,
-      profit: 218.5,
-      profitPercent: 2.22,
-      exitReason: 'take_profit',
-    },
-    {
-      tradeId: 4,
-      entryDate: '2025-11-15',
-      entryTime: '11:00:00',
-      entryPrice: 104.20,
-      exitDate: '2025-11-15',
-      exitTime: '13:45:00',
-      exitPrice: 103.50,
-      shares: 95,
-      profit: -66.5,
-      profitPercent: -0.67,
-      exitReason: 'signal',
-    },
-    {
-      tradeId: 5,
-      entryDate: '2025-11-20',
-      entryTime: '09:30:00',
-      entryPrice: 105.00,
-      exitDate: '2025-11-20',
-      exitTime: '14:30:00',
-      exitPrice: 107.50,
-      shares: 90,
-      profit: 225,
-      profitPercent: 2.38,
-      exitReason: 'signal',
-    },
-    {
-      tradeId: 6,
-      entryDate: '2025-11-25',
-      entryTime: '10:00:00',
-      entryPrice: 106.80,
-      exitDate: '2025-11-25',
-      exitTime: '15:30:00',
-      exitPrice: 108.20,
-      shares: 90,
-      profit: 126,
-      profitPercent: 1.31,
-      exitReason: 'signal',
-    },
-    {
-      tradeId: 7,
-      entryDate: '2025-12-02',
-      entryTime: '09:45:00',
-      entryPrice: 107.50,
-      exitDate: '2025-12-02',
-      exitTime: '11:00:00',
-      exitPrice: 106.20,
-      shares: 90,
-      profit: -117,
-      profitPercent: -1.21,
-      exitReason: 'stop_loss',
-    },
-    {
-      tradeId: 8,
-      entryDate: '2025-12-10',
-      entryTime: '10:30:00',
-      entryPrice: 108.00,
-      exitDate: '2025-12-10',
-      exitTime: '14:00:00',
-      exitPrice: 109.80,
-      shares: 85,
-      profit: 153,
-      profitPercent: 1.67,
-      exitReason: 'signal',
-    },
-    {
-      tradeId: 9,
-      entryDate: '2025-12-18',
-      entryTime: '11:15:00',
-      entryPrice: 109.20,
-      exitDate: '2025-12-18',
-      exitTime: '15:45:00',
-      exitPrice: 110.50,
-      shares: 85,
-      profit: 110.5,
-      profitPercent: 1.19,
-      exitReason: 'signal',
-    },
-    {
-      tradeId: 10,
-      entryDate: '2026-01-08',
-      entryTime: '09:30:00',
-      entryPrice: 110.00,
-      exitDate: '2026-01-08',
-      exitTime: '13:30:00',
-      exitPrice: 108.50,
-      shares: 85,
-      profit: -127.5,
-      profitPercent: -1.36,
-      exitReason: 'stop_loss',
-    },
-  ];
-  
-  // 生成资金曲线（每天一个数据点）
+  let cash = initialCapital;
+  const positions: Position[] = [];
+  const trades: TradeRecord[] = [];
   const equityCurve: EquityPoint[] = [];
-  let currentEquity = initialCapital;
-  const startTime = new Date(startDate).getTime();
-  const endTime = new Date(endDate).getTime();
-  const dayMs = 24 * 60 * 60 * 1000;
+  let tradeIdCounter = 1;
   
-  for (let time = startTime; time <= endTime; time += dayMs) {
-    const date = new Date(time);
-    const dateStr = date.toISOString().split('T')[0];
+  // 计算技术指标
+  const closes = bars.map(b => b.close);
+  const highs = bars.map(b => b.high);
+  const lows = bars.map(b => b.low);
+  
+  const rsiValues = calculateRSI(closes, config.rsiPeriod);
+  const atrValues = calculateATR(highs, lows, closes, config.atrPeriod);
+  
+  // 计算MA均线（用于趋势过滤）
+  let maValues: number[] = [];
+  if (config.useTrendFilter) {
+    maValues = config.maType === 'SMA' 
+      ? calculateSMA(closes, config.maPeriod)
+      : calculateEMA(closes, config.maPeriod);
+  }
+  
+  // 遍历每个bar，模拟交易
+  for (let i = 0; i < bars.length; i++) {
+    const bar = bars[i];
+    const rsi = rsiValues[i];
+    const atr = atrValues[i];
+    const ma = config.useTrendFilter ? maValues[i] : 0;
     
-    // 模拟随机波动
-    const randomChange = (Math.random() - 0.5) * 200;
-    currentEquity = Math.max(initialCapital * 0.8, Math.min(initialCapital * 1.3, currentEquity + randomChange));
+    // 检查是否有足够的数据计算指标
+    if (isNaN(rsi) || (config.useATRStop && isNaN(atr)) || (config.useTrendFilter && isNaN(ma))) {
+      continue;
+    }
+    
+    // 1. 检查现有持仓的止损/止盈
+    for (let j = positions.length - 1; j >= 0; j--) {
+      const pos = positions[j];
+      const currentPrice = bar.close;
+      const profitPercent = (currentPrice - pos.entryPrice) / pos.entryPrice;
+      
+      let shouldExit = false;
+      let exitReason = '';
+      
+      // ATR动态止损
+      if (config.useATRStop && currentPrice <= pos.stopLossPrice) {
+        shouldExit = true;
+        exitReason = 'atr_stop';
+      }
+      // 固定百分比止损
+      else if (!config.useATRStop && profitPercent <= config.stopLoss) {
+        shouldExit = true;
+        exitReason = 'stop_loss';
+      }
+      // 止盈
+      else if (profitPercent >= config.takeProfit) {
+        shouldExit = true;
+        exitReason = 'take_profit';
+      }
+      // 卖出信号（RSI超买）
+      else if (rsi >= config.rsiOverbought) {
+        shouldExit = true;
+        exitReason = 'signal';
+      }
+      
+      if (shouldExit) {
+        // 平仓
+        const exitPrice = currentPrice;
+        const grossProfit = (exitPrice - pos.entryPrice) * pos.shares;
+        
+        // 计算交易成本
+        const buyCost = pos.entryPrice * pos.shares * config.commissionRate;
+        const sellCost = exitPrice * pos.shares * (config.commissionRate + config.stampTaxRate);
+        const netProfit = grossProfit - buyCost - sellCost;
+        
+        cash += exitPrice * pos.shares - sellCost;
+        
+        // 记录交易
+        const entryBar = bars[pos.entryIndex];
+        trades.push({
+          tradeId: tradeIdCounter++,
+          entryDate: entryBar.date,
+          entryTime: entryBar.time,
+          entryPrice: pos.entryPrice,
+          exitDate: bar.date,
+          exitTime: bar.time,
+          exitPrice: exitPrice,
+          shares: pos.shares,
+          profit: netProfit,
+          profitPercent: (exitPrice - pos.entryPrice) / pos.entryPrice,
+          exitReason: exitReason,
+          stopLossPrice: pos.stopLossPrice,
+        });
+        
+        // 移除持仓
+        positions.splice(j, 1);
+      }
+    }
+    
+    // 2. 检查买入信号
+    if (positions.length < config.maxPositions && rsi < config.rsiOversold) {
+      // 趋势过滤：只在价格 > MA 时买入
+      const trendOk = !config.useTrendFilter || bar.close > ma;
+      
+      if (trendOk) {
+        // 计算买入数量
+        const investAmount = cash * config.positionSize;
+        const buyPrice = bar.close;
+        const shares = Math.floor(investAmount / buyPrice);
+        
+        if (shares > 0) {
+          // 计算止损价
+          let stopLossPrice: number;
+          if (config.useATRStop) {
+            stopLossPrice = buyPrice - atr * config.atrMultiplier;
+          } else {
+            stopLossPrice = buyPrice * (1 + config.stopLoss);
+          }
+          
+          // 扣除买入成本
+          const buyCost = buyPrice * shares * (1 + config.commissionRate);
+          cash -= buyCost;
+          
+          // 开仓
+          positions.push({
+            entryIndex: i,
+            entryPrice: buyPrice,
+            shares: shares,
+            stopLossPrice: stopLossPrice,
+          });
+        }
+      }
+    }
+    
+    // 3. 记录资金曲线
+    const positionValue = positions.reduce((sum, pos) => sum + pos.shares * bar.close, 0);
+    const equity = cash + positionValue;
     
     equityCurve.push({
-      date: dateStr,
-      time: '16:00:00',
-      equity: Math.round(currentEquity * 100) / 100,
-      cash: Math.round(currentEquity * 0.3 * 100) / 100,
-      positionValue: Math.round(currentEquity * 0.7 * 100) / 100,
+      date: bar.date,
+      time: bar.time,
+      equity: Math.round(equity * 100) / 100,
+      cash: Math.round(cash * 100) / 100,
+      positionValue: Math.round(positionValue * 100) / 100,
     });
   }
   
+  // 4. 平掉所有未平仓持仓
+  const lastBar = bars[bars.length - 1];
+  for (const pos of positions) {
+    const exitPrice = lastBar.close;
+    const grossProfit = (exitPrice - pos.entryPrice) * pos.shares;
+    const buyCost = pos.entryPrice * pos.shares * config.commissionRate;
+    const sellCost = exitPrice * pos.shares * (config.commissionRate + config.stampTaxRate);
+    const netProfit = grossProfit - buyCost - sellCost;
+    
+    cash += exitPrice * pos.shares - sellCost;
+    
+    const entryBar = bars[pos.entryIndex];
+    trades.push({
+      tradeId: tradeIdCounter++,
+      entryDate: entryBar.date,
+      entryTime: entryBar.time,
+      entryPrice: pos.entryPrice,
+      exitDate: lastBar.date,
+      exitTime: lastBar.time,
+      exitPrice: exitPrice,
+      shares: pos.shares,
+      profit: netProfit,
+      profitPercent: (exitPrice - pos.entryPrice) / pos.entryPrice,
+      exitReason: 'open',
+      stopLossPrice: pos.stopLossPrice,
+    });
+  }
+  
+  // 5. 计算统计指标
   const finalCapital = equityCurve[equityCurve.length - 1].equity;
   const totalReturn = (finalCapital - initialCapital) / initialCapital;
   
-  // 计算交易统计
-  const winningTrades = trades.filter(t => t.profit && t.profit > 0).length;
-  const losingTrades = trades.filter(t => t.profit && t.profit < 0).length;
-  const totalProfit = trades.filter(t => t.profit && t.profit > 0).reduce((sum, t) => sum + (t.profit || 0), 0);
-  const totalLoss = Math.abs(trades.filter(t => t.profit && t.profit < 0).reduce((sum, t) => sum + (t.profit || 0), 0));
+  const winningTrades = trades.filter(t => t.profit && t.profit > 0);
+  const losingTrades = trades.filter(t => t.profit && t.profit < 0);
+  const totalProfit = winningTrades.reduce((sum, t) => sum + (t.profit || 0), 0);
+  const totalLoss = Math.abs(losingTrades.reduce((sum, t) => sum + (t.profit || 0), 0));
+  
+  const returns = equityCurve.map((point, i) => {
+    if (i === 0) return 0;
+    return (point.equity - equityCurve[i - 1].equity) / equityCurve[i - 1].equity;
+  }).slice(1);
+  
+  const maxDrawdown = calculateMaxDrawdown(equityCurve.map(p => p.equity));
+  const sharpeRatio = calculateSharpeRatio(returns);
+  const volatility = calculateVolatility(returns);
+  
+  const tradingDays = bars.length;
+  const annualizedReturn = totalReturn * (252 / tradingDays);
   
   const result: BacktestResult = {
     symbol,
     startDate,
     endDate,
-    tradingDays: Math.floor((endTime - startTime) / dayMs),
+    tradingDays,
     
     initialCapital,
     finalCapital,
     totalReturn,
-    annualizedReturn: totalReturn * (365 / Math.floor((endTime - startTime) / dayMs)),
+    annualizedReturn,
     
-    maxDrawdown: -0.08,
-    sharpeRatio: 1.2,
-    volatility: 0.15,
+    maxDrawdown,
+    sharpeRatio,
+    volatility,
     
     totalTrades: trades.length,
-    winningTrades,
-    losingTrades,
-    winRate: winningTrades / trades.length,
-    avgProfit: totalProfit / winningTrades,
-    avgLoss: -totalLoss / losingTrades,
-    profitFactor: totalProfit / totalLoss,
+    winningTrades: winningTrades.length,
+    losingTrades: losingTrades.length,
+    winRate: trades.length > 0 ? winningTrades.length / trades.length : 0,
+    avgProfit: winningTrades.length > 0 ? totalProfit / winningTrades.length : 0,
+    avgLoss: losingTrades.length > 0 ? -totalLoss / losingTrades.length : 0,
+    profitFactor: totalLoss > 0 ? totalProfit / totalLoss : 0,
     
     equityCurve,
     trades,
   };
   
   return result;
+}
+
+/**
+ * 生成模拟K线数据（用于演示）
+ * TODO: 替换为真实历史数据API
+ */
+function generateMockBars(startDate: string, endDate: string): Bar[] {
+  const bars: Bar[] = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  let currentPrice = 100;
+  let currentDate = new Date(start);
+  
+  while (currentDate <= end) {
+    // 跳过周末
+    if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
+      // 生成当天的分钟级数据（模拟240个bar，4小时交易）
+      for (let minute = 0; minute < 240; minute++) {
+        const hour = 9 + Math.floor(minute / 60);
+        const min = minute % 60;
+        
+        // 模拟价格波动
+        const change = (Math.random() - 0.5) * 2;
+        currentPrice = Math.max(50, Math.min(150, currentPrice + change));
+        
+        const open = currentPrice;
+        const high = currentPrice + Math.random() * 1;
+        const low = currentPrice - Math.random() * 1;
+        const close = low + Math.random() * (high - low);
+        
+        bars.push({
+          date: currentDate.toISOString().split('T')[0],
+          time: `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:00`,
+          open: Math.round(open * 100) / 100,
+          high: Math.round(high * 100) / 100,
+          low: Math.round(low * 100) / 100,
+          close: Math.round(close * 100) / 100,
+          volume: Math.floor(Math.random() * 10000) + 1000,
+        });
+        
+        currentPrice = close;
+      }
+    }
+    
+    // 下一天
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return bars;
 }
 
 /**
@@ -326,4 +436,16 @@ function calculateMaxDrawdown(equityCurve: number[]): number {
   }
   
   return maxDrawdown;
+}
+
+/**
+ * 计算波动率
+ */
+function calculateVolatility(returns: number[]): number {
+  if (returns.length === 0) return 0;
+  
+  const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
+  const variance = returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length;
+  
+  return Math.sqrt(variance * 252);
 }

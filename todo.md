@@ -602,4 +602,55 @@
 - [x] 修复亏损交易颜色：改为绿色
 - [x] 修复平均盈利/亏损颜色：盈利红色，亏损绿色
 - [x] 修复交易明细表格盈亏颜色
+- [x] 保存检查点并交付（版本号：a8a2b70c）
+
+## 策略实验室核心逻辑重构（资深量化交易员需求）
+### 问题诊断
+- 问题1：逆势抄底（接飞刀） - RSI超卖时不考虑趋势方向，在主跌浪中不断买入止损
+- 问题2：风控僵化 - 固定百分比止损无法适应不同波动率标的
+
+### 重构任务
+- [ ] 实现MA（移动平均线）指标计算函数
+- [ ] 实现ATR（平均真实波幅）指标计算函数
+- [ ] 添加趋势过滤模块：买入条件改为`价格 > MA AND RSI < 超卖线`
+- [ ] 添加动态风控模块：止损价 = 入场价 - ATR * ATR_Multiplier
+- [ ] 更新前端参数配置：添加MA周期、ATR周期、ATR倍数参数
+- [ ] 重构backtest.service.ts的交易逻辑
+- [ ] 测试验证：对比修改前后的回测结果
+- [ ] 保存检查点并交付
+
+## 策略实验室核心逻辑重构（资深量化交易员需求）
+
+### 问题诊断
+- [x] 问题1：逆势抄底（接飞刀）- RSI超卖就买入，忽略趋势方向
+- [x] 问题2：风控僵化 - 固定3%止损，不考虑波动率
+
+### 解决方案
+- [x] 创建indicators.ts，实现calculateSMA、calculateEMA、calculateATR、calculateRSI
+- [x] 更新BacktestConfig接口，添加useTrendFilter、maPeriod、maType、useATRStop、atrPeriod、atrMultiplier
+- [x] 更新TradeRecord接口，添加stopLossPrice字段
+- [x] 更新backtest.routes.ts，添加新参数默认值（useTrendFilter=true, useATRStop=true）
+- [x] 更新StrategyLab.tsx前端接口，添加新参数
+- [x] 添加趋势过滤模块UI（MA周期、MA类型选择）
+- [x] 添加ATR动态止损UI（ATR周期、ATR倍数）
+- [x] TypeScript编译通过（0错误）
+- [x] 实现回测引擎交易逻辑：
+  - [x] 趋势过滤：只在价格 > MA 且 RSI < 超卖线时买入
+  - [x] ATR动态止损：止损价 = 入场价 - ATR * ATR倍数
+  - [x] 信号生成：RSI超卖买入，RSI超买卖出
+  - [x] 仓位管理：按配置的仓位比例开仓，支持多个持仓
+  - [x] 风险控制：每个bar检查止损/止盈条件
+  - [x] 交易成本：计算手续费和印花税
+  - [x] 统计指标：总收益率、最大回撤、夏普比率、胜率、盈亏比
+- [x] 测试验证：
+  - [x] 编写vitest测试用例（backtest.service.test.ts）
+  - [x] 测试趋势过滤功能
+  - [x] 测试ATR动态止损功能
+  - [x] 测试固定百分比止损功能
+  - [x] 测试止盈功能
+  - [x] 测试交易成本计算
+  - [x] 测试资金曲线连续性
+  - [x] 测试胜率和盈亏比计算
+  - [x] 测试SMA和EMA趋势过滤差异
+  - [x] 所有测试通过（10/10）
 - [ ] 保存检查点并交付

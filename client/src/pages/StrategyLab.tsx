@@ -14,6 +14,16 @@ interface BacktestConfig {
   positionSize: number;
   stopLoss: number;
   takeProfit: number;
+  
+  // 趋势过滤模块
+  useTrendFilter?: boolean;
+  maPeriod?: number;
+  maType?: 'SMA' | 'EMA';
+  
+  // ATR动态止损
+  useATRStop?: boolean;
+  atrPeriod?: number;
+  atrMultiplier?: number;
 }
 
 interface BacktestResult {
@@ -285,22 +295,116 @@ export default function StrategyLab() {
             </div>
 
             <div className="border-t pt-4 space-y-4">
-              <h3 className="font-semibold">风险控制</h3>
+              <h3 className="font-semibold">趋势过滤模块</h3>
               
-              {/* 止损线 */}
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <Label>止损线</Label>
-                  <span className="text-sm text-muted-foreground">{(config.stopLoss * 100).toFixed(0)}%</span>
-                </div>
-                <Slider
-                  value={[Math.abs(config.stopLoss) * 100]}
-                  onValueChange={([value]) => setConfig({ ...config, stopLoss: -value / 100 })}
-                  min={1}
-                  max={10}
-                  step={0.5}
+              {/* 启用趋势过滤 */}
+              <div className="flex items-center justify-between">
+                <Label>启用MA趋势过滤</Label>
+                <input
+                  type="checkbox"
+                  checked={config.useTrendFilter !== false}
+                  onChange={(e) => setConfig({ ...config, useTrendFilter: e.target.checked })}
+                  className="w-4 h-4"
                 />
               </div>
+              
+              {config.useTrendFilter !== false && (
+                <>
+                  {/* MA周期 */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>MA均线周期</Label>
+                      <span className="text-sm text-muted-foreground">{config.maPeriod || 20}</span>
+                    </div>
+                    <Slider
+                      value={[config.maPeriod || 20]}
+                      onValueChange={([value]) => setConfig({ ...config, maPeriod: value })}
+                      min={10}
+                      max={120}
+                      step={10}
+                    />
+                  </div>
+                  
+                  {/* MA类型 */}
+                  <div className="space-y-2">
+                    <Label>MA类型</Label>
+                    <select
+                      className="w-full p-2 border rounded-md bg-background"
+                      value={config.maType || 'SMA'}
+                      onChange={(e) => setConfig({ ...config, maType: e.target.value as 'SMA' | 'EMA' })}
+                    >
+                      <option value="SMA">简单移动平均(SMA)</option>
+                      <option value="EMA">指数移动平均(EMA)</option>
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="border-t pt-4 space-y-4">
+              <h3 className="font-semibold">风险控制</h3>
+              
+              {/* 启用ATR动态止损 */}
+              <div className="flex items-center justify-between">
+                <Label>启用ATR动态止损</Label>
+                <input
+                  type="checkbox"
+                  checked={config.useATRStop !== false}
+                  onChange={(e) => setConfig({ ...config, useATRStop: e.target.checked })}
+                  className="w-4 h-4"
+                />
+              </div>
+              
+              {config.useATRStop !== false && (
+                <>
+                  {/* ATR周期 */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>ATR周期</Label>
+                      <span className="text-sm text-muted-foreground">{config.atrPeriod || 14}</span>
+                    </div>
+                    <Slider
+                      value={[config.atrPeriod || 14]}
+                      onValueChange={([value]) => setConfig({ ...config, atrPeriod: value })}
+                      min={7}
+                      max={30}
+                      step={1}
+                    />
+                  </div>
+                  
+                  {/* ATR倍数 */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>ATR倍数</Label>
+                      <span className="text-sm text-muted-foreground">{(config.atrMultiplier || 2.0).toFixed(1)}</span>
+                    </div>
+                    <Slider
+                      value={[(config.atrMultiplier || 2.0) * 10]}
+                      onValueChange={([value]) => setConfig({ ...config, atrMultiplier: value / 10 })}
+                      min={10}
+                      max={40}
+                      step={1}
+                    />
+                  </div>
+                </>
+              )}
+              
+              {/* 固定止损线（仅当未启用ATR时显示） */}
+              {config.useATRStop === false && (
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label>止损线</Label>
+                    <span className="text-sm text-muted-foreground">{(config.stopLoss * 100).toFixed(0)}%</span>
+                  </div>
+                  <Slider
+                    value={[Math.abs(config.stopLoss) * 100]}
+                    onValueChange={([value]) => setConfig({ ...config, stopLoss: -value / 100 })}
+                    min={1}
+                    max={10}
+                    step={0.5}
+                  />
+                </div>
+              )}
 
               {/* 止盈线 */}
               <div className="space-y-2">
