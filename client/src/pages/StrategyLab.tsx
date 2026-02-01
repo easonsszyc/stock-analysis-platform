@@ -84,6 +84,19 @@ const TRADING_STYLE_PRESETS: Record<TradingStyle, { label: string; icon: any; co
       positionSize: 0.2,
       stopLoss: -0.01,
       takeProfit: 0.015,
+      macdFast: 8,
+      macdSlow: 17,
+      macdSignal: 9,
+      useTrendFilter: true,
+      maPeriod: 10,
+      maType: 'EMA',
+      trendFilterStrength: 'loose',
+      useVolumeFilter: true,
+      volumeMAPerio: 3,
+      volumeThreshold: 1.5,
+      useATRStop: true,
+      atrPeriod: 7,
+      atrMultiplier: 1.5,
     },
   },
   day_trading: {
@@ -96,6 +109,19 @@ const TRADING_STYLE_PRESETS: Record<TradingStyle, { label: string; icon: any; co
       positionSize: 0.3,
       stopLoss: -0.03,
       takeProfit: 0.05,
+      macdFast: 12,
+      macdSlow: 26,
+      macdSignal: 9,
+      useTrendFilter: true,
+      maPeriod: 20,
+      maType: 'SMA',
+      trendFilterStrength: 'moderate',
+      useVolumeFilter: false,
+      volumeMAPerio: 5,
+      volumeThreshold: 1.2,
+      useATRStop: true,
+      atrPeriod: 14,
+      atrMultiplier: 2.0,
     },
   },
   swing_trading: {
@@ -108,6 +134,19 @@ const TRADING_STYLE_PRESETS: Record<TradingStyle, { label: string; icon: any; co
       positionSize: 0.4,
       stopLoss: -0.08,
       takeProfit: 0.15,
+      macdFast: 12,
+      macdSlow: 26,
+      macdSignal: 9,
+      useTrendFilter: true,
+      maPeriod: 20,
+      maType: 'SMA',
+      trendFilterStrength: 'moderate',
+      useVolumeFilter: false,
+      volumeMAPerio: 5,
+      volumeThreshold: 1.2,
+      useATRStop: true,
+      atrPeriod: 14,
+      atrMultiplier: 2.0,
     },
   },
 };
@@ -284,6 +323,51 @@ export default function StrategyLab() {
                   step={1}
                 />
               </div>
+              
+              {/* MACD快线周期 */}
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <Label>MACD快线周期</Label>
+                  <span className="text-sm text-muted-foreground">{config.macdFast || 12}</span>
+                </div>
+                <Slider
+                  value={[config.macdFast || 12]}
+                  onValueChange={([value]) => setConfig({ ...config, macdFast: value })}
+                  min={5}
+                  max={20}
+                  step={1}
+                />
+              </div>
+              
+              {/* MACD慢线周期 */}
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <Label>MACD慢线周期</Label>
+                  <span className="text-sm text-muted-foreground">{config.macdSlow || 26}</span>
+                </div>
+                <Slider
+                  value={[config.macdSlow || 26]}
+                  onValueChange={([value]) => setConfig({ ...config, macdSlow: value })}
+                  min={15}
+                  max={40}
+                  step={1}
+                />
+              </div>
+              
+              {/* MACD信号线周期 */}
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <Label>MACD信号线周期</Label>
+                  <span className="text-sm text-muted-foreground">{config.macdSignal || 9}</span>
+                </div>
+                <Slider
+                  value={[config.macdSignal || 9]}
+                  onValueChange={([value]) => setConfig({ ...config, macdSignal: value })}
+                  min={5}
+                  max={15}
+                  step={1}
+                />
+              </div>
             </div>
 
             <div className="border-t pt-4 space-y-4">
@@ -365,6 +449,58 @@ export default function StrategyLab() {
                       {config.trendFilterStrength === 'strict' && '只在价格高于MA时买入，最严格'}
                       {config.trendFilterStrength === 'moderate' && '允许价格低于MA 3%以内，平衡风险与机会'}
                       {(config.trendFilterStrength === 'loose' || !config.trendFilterStrength) && '允许价格低于MA 5%以内，捕捉更多机会'}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="border-t pt-4 space-y-4">
+              <h3 className="font-semibold">成交量过滤模块</h3>
+              
+              {/* 启用成交量过滤 */}
+              <div className="flex items-center justify-between">
+                <Label>启用成交量过滤</Label>
+                <input
+                  type="checkbox"
+                  checked={config.useVolumeFilter === true}
+                  onChange={(e) => setConfig({ ...config, useVolumeFilter: e.target.checked })}
+                  className="w-4 h-4"
+                />
+              </div>
+              
+              {config.useVolumeFilter === true && (
+                <>
+                  {/* 成交量均线周期 */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>成交量均线周期</Label>
+                      <span className="text-sm text-muted-foreground">{config.volumeMAPerio || 5}</span>
+                    </div>
+                    <Slider
+                      value={[config.volumeMAPerio || 5]}
+                      onValueChange={([value]) => setConfig({ ...config, volumeMAPerio: value })}
+                      min={3}
+                      max={20}
+                      step={1}
+                    />
+                  </div>
+                  
+                  {/* 放量阈值 */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>放量阈值</Label>
+                      <span className="text-sm text-muted-foreground">{(config.volumeThreshold || 1.2).toFixed(1)}x</span>
+                    </div>
+                    <Slider
+                      value={[(config.volumeThreshold || 1.2) * 10]}
+                      onValueChange={([value]) => setConfig({ ...config, volumeThreshold: value / 10 })}
+                      min={10}
+                      max={30}
+                      step={1}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      仅当成交量大于均线{(config.volumeThreshold || 1.2).toFixed(1)}倍时才买入
                     </p>
                   </div>
                 </>
