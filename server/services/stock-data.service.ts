@@ -63,7 +63,7 @@ class StockDataService {
    * 获取股票历史数据
    * 策略：
    * - CN/HK: 优先东方财富(EastMoney) -> 降级腾讯API -> 降级雅虎API
-   * - US: 优先雅虎API -> 降级腾讯API
+   * - US: 优先腾讯API -> 降级东方财富API -> 降级雅虎API
    */
   async getStockData(
     symbol: string,
@@ -99,31 +99,31 @@ class StockDataService {
       }
     } else {
       // US or others
-      // US or others
+      // 1. Try Tencent (Primary for US - more stable than Yahoo)
       try {
-        console.log(`[StockData] Using Yahoo API (Primary) for ${symbol}`);
-        const result = await this.getStockDataFromYahoo(symbol, market, range, interval);
-        // Safety check for empty data which Yahoo sometimes returns without error
-        if (!result.priceData || result.priceData.length === 0) throw new Error('Yahoo returned empty data');
-        return result;
-      } catch (error: any) {
-        console.warn(`[StockData] Yahoo Finance failed for ${symbol}, falling back to EastMoney:`, error.message);
+        console.log(`[StockData] Using Tencent API (Primary) for ${symbol}`);
+        const { getStockDataFromTencent } = await import('./tencent-stock-data.service.js');
+        return await getStockDataFromTencent(symbol, market, range, interval);
+      } catch (tencentError: any) {
+        console.warn(`[StockData] Tencent API failed for ${symbol}, falling back to EastMoney:`, tencentError.message);
 
-        // 2. Try EastMoney (Secondary for US, often better than Tencent)
+        // 2. Try EastMoney (Secondary for US)
         try {
           console.log(`[StockData] Using EastMoney API (Fallback) for ${symbol}`);
           const { getStockDataFromEastMoney } = await import('./eastmoney-stock-data.service.js');
           return await getStockDataFromEastMoney(symbol, market, range, interval);
         } catch (emError: any) {
-          console.warn(`[StockData] EastMoney API failed for ${symbol}, falling back to Tencent:`, emError.message);
+          console.warn(`[StockData] EastMoney API failed for ${symbol}, falling back to Yahoo:`, emError.message);
 
-          // 3. Try Tencent (Last Resort for US)
+          // 3. Try Yahoo (Last Resort for US)
           try {
-            console.log(`[StockData] Falling back to Tencent API for ${symbol}`);
-            const { getStockDataFromTencent } = await import('./tencent-stock-data.service.js');
-            return await getStockDataFromTencent(symbol, market, range, interval);
-          } catch (tencentError: any) {
-            throw new Error(`Failed to fetch stock data (Yahoo failed, EastMoney failed: ${emError.message}, Tencent failed: ${tencentError.message})`);
+            console.log(`[StockData] Using Yahoo API (Last Resort) for ${symbol}`);
+            const result = await this.getStockDataFromYahoo(symbol, market, range, interval);
+            // Safety check for empty data which Yahoo sometimes returns without error
+            if (!result.priceData || result.priceData.length === 0) throw new Error('Yahoo returned empty data');
+            return result;
+          } catch (yahooError: any) {
+            throw new Error(`Failed to fetch stock data (Tencent failed: ${tencentError.message}, EastMoney failed: ${emError.message}, Yahoo failed: ${yahooError.message})`);
           }
         }
       }
