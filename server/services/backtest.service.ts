@@ -23,6 +23,7 @@ export interface BacktestConfig {
   useTrendFilter: boolean;        // 是否启用趋势过滤
   maPeriod: number;               // MA均线周期（默认20或60）
   maType: 'SMA' | 'EMA';          // MA类型（简单移动平均或指数移动平均）
+  trendFilterStrength?: 'strict' | 'moderate' | 'loose';  // 趋势过滤强度（严格/中等/宽松）
   
   // 仓位管理
   positionSize: number;           // 单次投入比例（0.1-0.5）
@@ -221,8 +222,21 @@ export async function runBacktest(
     
     // 2. 检查买入信号
     if (positions.length < config.maxPositions && rsi < config.rsiOversold) {
-      // 趋势过滤：只在价格 > MA 时买入
-      const trendOk = !config.useTrendFilter || bar.close > ma;
+      // 趋势过滤：根据强度设置不同的阈值
+      let trendOk = true;
+      if (config.useTrendFilter) {
+        const strength = config.trendFilterStrength || 'strict';
+        if (strength === 'strict') {
+          // 严格模式：价格 > MA
+          trendOk = bar.close > ma;
+        } else if (strength === 'moderate') {
+          // 中等模式：价格 > MA * 0.97（允耸3%回调）
+          trendOk = bar.close > ma * 0.97;
+        } else if (strength === 'loose') {
+          // 宽松模式：价格 > MA * 0.95（允耸5%回调）
+          trendOk = bar.close > ma * 0.95;
+        }
+      }
       
       if (trendOk) {
         // 计算买入数量

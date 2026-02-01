@@ -19,6 +19,7 @@ interface BacktestConfig {
   useTrendFilter?: boolean;
   maPeriod?: number;
   maType?: 'SMA' | 'EMA';
+  trendFilterStrength?: 'strict' | 'moderate' | 'loose';
   
   // ATR动态止损
   useATRStop?: boolean;
@@ -336,6 +337,25 @@ export default function StrategyLab() {
                       <option value="SMA">简单移动平均(SMA)</option>
                       <option value="EMA">指数移动平均(EMA)</option>
                     </select>
+                  </div>
+                  
+                  {/* 趋势过滤强度 */}
+                  <div className="space-y-2">
+                    <Label>趋势过滤强度</Label>
+                    <select
+                      className="w-full p-2 border rounded-md bg-background"
+                      value={config.trendFilterStrength || 'moderate'}
+                      onChange={(e) => setConfig({ ...config, trendFilterStrength: e.target.value as 'strict' | 'moderate' | 'loose' })}
+                    >
+                      <option value="strict">严格（价格 &gt; MA）</option>
+                      <option value="moderate">中等（允耸3%回调）</option>
+                      <option value="loose">宽松（允耸5%回调）</option>
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      {config.trendFilterStrength === 'strict' && '只在价格高于MA时买入，最严格'}
+                      {config.trendFilterStrength === 'moderate' && '允许价格低于MA 3%以内，平衡风险与机会'}
+                      {(config.trendFilterStrength === 'loose' || !config.trendFilterStrength) && '允许价格低于MA 5%以内，捕捉更多机会'}
+                    </p>
                   </div>
                 </>
               )}

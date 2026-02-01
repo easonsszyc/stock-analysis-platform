@@ -28,6 +28,7 @@ router.post('/run', async (req, res) => {
       useTrendFilter: config?.useTrendFilter !== undefined ? config.useTrendFilter : true,
       maPeriod: config?.maPeriod || 20,
       maType: config?.maType || 'SMA',
+      trendFilterStrength: config?.trendFilterStrength || 'moderate',
       
       positionSize: config?.positionSize || 0.3,
       maxPositions: config?.maxPositions || 5,
