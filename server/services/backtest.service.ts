@@ -7,7 +7,7 @@
  * 2. ATR动态止损：止损价 = 入场价 - ATR * ATR_Multiplier，适应不同波动率标的
  */
 
-import { calculateSMA, calculateEMA, calculateATR, calculateRSI } from '../utils/indicators';
+import { calculateSMA, calculateEMA, calculateATR, calculateRSI, calculateMACD, calculateVolumeMA } from '../utils/indicators';
 import { getHistoricalData, HistoricalBar } from './historical-data.service';
 
 export interface BacktestConfig {
@@ -24,6 +24,11 @@ export interface BacktestConfig {
   maPeriod: number;               // MA均线周期（默认20或60）
   maType: 'SMA' | 'EMA';          // MA类型（简单移动平均或指数移动平均）
   trendFilterStrength?: 'strict' | 'moderate' | 'loose';  // 趋势过滤强度（严格/中等/宽松）
+  
+  // 成交量过滤模块（新增）
+  useVolumeFilter: boolean;       // 是否启用成交量过滤
+  volumeMAPerio: number;          // 成交量均线周期（默认5）
+  volumeThreshold: number;        // 成交量阈值倍数（默认1.2，表示成交量 > 均线*1.2）
   
   // 仓位管理
   positionSize: number;           // 单次投入比例（0.1-0.5）
@@ -129,6 +134,7 @@ export async function runBacktest(
   const closes = bars.map(b => b.close);
   const highs = bars.map(b => b.high);
   const lows = bars.map(b => b.low);
+  const volumes = bars.map(b => b.volume);
   
   const rsiValues = calculateRSI(closes, config.rsiPeriod);
   
@@ -142,6 +148,15 @@ export async function runBacktest(
     } else {
       maValues = calculateSMA(closes, config.maPeriod);
     }
+  }
+  
+  // 计算MACD（用于信号确认）
+  const { histogram: macdHistogram } = calculateMACD(closes, config.macdFast, config.macdSlow, config.macdSignal);
+  
+  // 计算成交量均线（用于放量确认）
+  let volumeMAValues: number[] = [];
+  if (config.useVolumeFilter) {
+    volumeMAValues = calculateVolumeMA(volumes, config.volumeMAPerio);
   }
   
   // 遍历每个bar，执行交易逻辑
@@ -220,25 +235,44 @@ export async function runBacktest(
       }
     }
     
-    // 2. 检查买入信号
-    if (positions.length < config.maxPositions && rsi < config.rsiOversold) {
-      // 趋势过滤：根据强度设置不同的阈值
-      let trendOk = true;
+    // 2. 检查买入信号（多重确认机制）
+    if (positions.length < config.maxPositions) {
+      // 条件1：RSI反转确认（RSI < 超卖线 且 RSI > 前一根RSI）
+      const prevRSI = i > 0 ? rsiValues[i - 1] : NaN;
+      const rsiCondition = rsi < config.rsiOversold && !isNaN(prevRSI) && rsi > prevRSI;
+      
+      // 条件2：MACD金叉确认（MACD柱状图 > 0 且 前一根 <= 0）
+      const prevHistogram = i > 0 ? macdHistogram[i - 1] : NaN;
+      const macdCondition = macdHistogram[i] > 0 && !isNaN(prevHistogram) && prevHistogram <= 0;
+      
+      // 条件3：趋势过滤确认（根据强度设置不同的阈值）
+      let trendCondition = true;
       if (config.useTrendFilter) {
         const strength = config.trendFilterStrength || 'strict';
         if (strength === 'strict') {
           // 严格模式：价格 > MA
-          trendOk = bar.close > ma;
+          trendCondition = bar.close > ma;
         } else if (strength === 'moderate') {
           // 中等模式：价格 > MA * 0.97（允耸3%回调）
-          trendOk = bar.close > ma * 0.97;
+          trendCondition = bar.close > ma * 0.97;
         } else if (strength === 'loose') {
           // 宽松模式：价格 > MA * 0.95（允耸5%回调）
-          trendOk = bar.close > ma * 0.95;
+          trendCondition = bar.close > ma * 0.95;
         }
       }
       
-      if (trendOk) {
+      // 条件4：放量确认（成交量 > 成交量均线 * 阈值）
+      const volumeMA = config.useVolumeFilter ? volumeMAValues[i] : 0;
+      let volumeCondition = true;
+      if (config.useVolumeFilter && !isNaN(volumeMA)) {
+        volumeCondition = bar.volume > volumeMA * config.volumeThreshold;
+      }
+      
+      // 多重信号确认：至少满足3个条件
+      const conditions = [rsiCondition, macdCondition, trendCondition, volumeCondition];
+      const confirmedCount = conditions.filter(Boolean).length;
+      
+      if (confirmedCount >= 3) {
         // 计算买入数量
         const investAmount = cash * config.positionSize;
         const buyPrice = bar.close;

@@ -30,6 +30,11 @@ router.post('/run', async (req, res) => {
       maType: config?.maType || 'SMA',
       trendFilterStrength: config?.trendFilterStrength || 'moderate',
       
+      // 成交量过滤模块
+      useVolumeFilter: config?.useVolumeFilter !== undefined ? config.useVolumeFilter : true,
+      volumeMAPerio: config?.volumeMAPerio || 5,
+      volumeThreshold: config?.volumeThreshold || 1.2,
+      
       positionSize: config?.positionSize || 0.3,
       maxPositions: config?.maxPositions || 5,
       

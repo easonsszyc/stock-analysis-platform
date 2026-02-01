@@ -15,11 +15,21 @@ interface BacktestConfig {
   stopLoss: number;
   takeProfit: number;
   
+  // MACD参数
+  macdFast?: number;
+  macdSlow?: number;
+  macdSignal?: number;
+  
   // 趋势过滤模块
   useTrendFilter?: boolean;
   maPeriod?: number;
   maType?: 'SMA' | 'EMA';
   trendFilterStrength?: 'strict' | 'moderate' | 'loose';
+  
+  // 成交量过滤模块
+  useVolumeFilter?: boolean;
+  volumeMAPerio?: number;
+  volumeThreshold?: number;
   
   // ATR动态止损
   useATRStop?: boolean;
@@ -347,7 +357,7 @@ export default function StrategyLab() {
                       value={config.trendFilterStrength || 'moderate'}
                       onChange={(e) => setConfig({ ...config, trendFilterStrength: e.target.value as 'strict' | 'moderate' | 'loose' })}
                     >
-                      <option value="strict">严格（价格 &gt; MA）</option>
+                      <option value="strict">严格（价格 &amp;gt; MA）</option>
                       <option value="moderate">中等（允耸3%回调）</option>
                       <option value="loose">宽松（允耸5%回调）</option>
                     </select>

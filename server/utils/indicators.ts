@@ -181,3 +181,24 @@ export function calculateMACD(
   
   return { macd, signal, histogram };
 }
+
+/**
+ * 计算成交量移动平均线 (Volume MA)
+ * @param volumes 成交量数据数组
+ * @param period 周期（默认5）
+ * @returns 成交量均线数组
+ */
+export function calculateVolumeMA(volumes: number[], period: number = 5): number[] {
+  const result: number[] = [];
+  
+  for (let i = 0; i < volumes.length; i++) {
+    if (i < period - 1) {
+      result.push(NaN); // 数据不足，无法计算
+    } else {
+      const sum = volumes.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
+      result.push(sum / period);
+    }
+  }
+  
+  return result;
+}
