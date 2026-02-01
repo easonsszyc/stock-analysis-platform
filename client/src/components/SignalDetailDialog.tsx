@@ -7,6 +7,7 @@ interface SignalDetail {
   price: number;
   type: "buy" | "sell" | "hold";
   strength: number;
+  signalName?: string; // 信号名称: 相对底部、阶段启动、预顶离场等
   indicators?: {
     rsi?: number;
     macd?: { value: number; signal: number; histogram: number };
@@ -25,7 +26,7 @@ interface SignalDetail {
     strength: number; // 共振强度评分 0-100
   };
   // 配对信息
-  tradeId?: string;
+  tradeId?: string | number;
   pairedSignal?: SignalDetail;
   profitLoss?: number;
   profitLossPercent?: number;
@@ -44,7 +45,7 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
   const isBuy = signal.type === "buy";
   const targetPrice = signal.takeProfit || signal.target || signal.price * (isBuy ? 1.05 : 0.95);
   const stopLossPrice = signal.stopLoss || signal.price * (isBuy ? 0.97 : 1.03);
-  
+
   const potentialProfit = ((targetPrice - currentPrice) / currentPrice) * 100;
   const potentialLoss = ((currentPrice - stopLossPrice) / currentPrice) * 100;
   const riskReward = signal.riskRewardRatio || Math.abs(potentialProfit / potentialLoss);
@@ -86,7 +87,7 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
               ) : (
                 <TrendingDown className="w-6 h-6 text-green-500" />
               )}
-              <span>{isBuy ? "买入" : "卖出"}信号详情</span>
+              <span>{signal.signalName || (isBuy ? "买入" : "卖出")}信号详情</span>
             </DialogTitle>
             <Badge className={getConfidenceColor(signal.confidence)}>
               {getConfidenceLabel(signal.confidence)}
@@ -107,7 +108,7 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
                 </svg>
                 配对交易信息
                 <Badge className="ml-auto bg-blue-500/20 text-blue-400 border-blue-500/50">
-                  交易 #{signal.tradeId.split('-')[1]}
+                  交易 #{String(signal.tradeId).split('-')[1] || signal.tradeId}
                 </Badge>
               </h3>
               <div className="text-sm space-y-2">
@@ -134,7 +135,7 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
               </div>
             </div>
           )}
-          
+
           {/* 信号原因 */}
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -177,8 +178,8 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
                 <div className="mt-3 flex items-center gap-2">
                   <span className="text-xs">共振强度：</span>
                   <div className="flex-1 bg-background/50 rounded-full h-2 overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all" 
+                    <div
+                      className="h-full bg-primary transition-all"
                       style={{ width: `${signal.resonance.strength}%` }}
                     />
                   </div>
@@ -202,8 +203,8 @@ export function SignalDetailDialog({ open, onOpenChange, signal, currentPrice }:
                       {signal.indicators.rsi > 70
                         ? "超买区域"
                         : signal.indicators.rsi < 30
-                        ? "超卖区域"
-                        : "中性区域"}
+                          ? "超卖区域"
+                          : "中性区域"}
                     </div>
                   </div>
                 )}

@@ -20,6 +20,7 @@ import { TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SignalDetailDialog } from './SignalDetailDialog';
 import { TradingSimulationCard } from './TradingSimulationCard';
+import { TechnicalIndicatorsPanel } from './TechnicalIndicatorsPanel';
 
 interface IntradayDataPoint {
   time: string;
@@ -88,29 +89,73 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
-        // 清理股票代码，移除Yahoo Finance后缀（如.SS, .HK）
+        // 清理股票代码
         const cleanSymbol = symbol.split('.')[0];
-        
-        const response = await fetch(
-          `/api/intraday/data?symbol=${cleanSymbol}&market=${market}`
-        );
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch intraday data');
-        }
-        
-        const result = await response.json();
-        setData(result.data);
-        setSignals(result.signals);
-        setMarketStatus(result.marketStatus || null);
-        setDataDate(result.date || '');
-        setTradingSimulation(result.tradingSimulation || null);
-        
-        // 更新当前价格（使用最新的数据点）
-        if (result.data && result.data.length > 0) {
-          setCurrentPrice(result.data[result.data.length - 1].price);
+
+        // 策略: 'intraday'使用分时API(1天)，其他周期使用历史K线API(多天)
+        if (timeFrame === 'intraday') {
+          const response = await fetch(
+            `/api/intraday/data?symbol=${cleanSymbol}&market=${market}`
+          );
+
+          if (!response.ok) throw new Error('Failed to fetch intraday data');
+
+          const result = await response.json();
+          setData(result.data); // data point time is "HH:mm"
+          setSignals(result.signals);
+          setMarketStatus(result.marketStatus || null);
+          setDataDate(result.date || '');
+          setCurrentPrice(result.data.length > 0 ? result.data[result.data.length - 1].price : 0);
+
+        } else {
+          // K-line data (>1 day)
+          // Map timeFrame to interval/range
+          let interval = timeFrame as string;
+          let range = '60d'; // Default sufficient for 30d requirement
+          if (timeFrame === 'daily') {
+            interval = '1d';
+            range = '1y';
+          }
+
+          const response = await fetch(
+            `/api/stock/history?symbol=${cleanSymbol}&market=${market}&interval=${interval}&range=${range}`
+          );
+
+          if (!response.ok) throw new Error('Failed to fetch history data');
+
+          const result = await response.json();
+          const priceData = result.data.priceData || [];
+
+          // Map to IntradayDataPoint format
+          const mappedData: IntradayDataPoint[] = priceData.map((p: any) => ({
+            time: p.date.substring(5), // Remove Year "YYYY-MM-DD HH:mm" -> "MM-DD HH:mm"
+            price: p.close,
+            volume: p.volume,
+            amount: p.close * p.volume // Approx
+          }));
+
+          setData(mappedData);
+
+          // Fetch signals for daily data using the history-signals endpoint
+          try {
+            const signalResponse = await fetch(
+              `/api/stock/history-signals?symbol=${cleanSymbol}&market=${market}&interval=1d&range=60d`
+            );
+            if (signalResponse.ok) {
+              const signalResult = await signalResponse.json();
+              setSignals(signalResult.data?.signals || []);
+            } else {
+              setSignals([]);
+            }
+          } catch {
+            setSignals([]);
+          }
+
+          if (mappedData.length > 0) {
+            setCurrentPrice(mappedData[mappedData.length - 1].price);
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -118,87 +163,31 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
         setLoading(false);
       }
     };
-    
+
     fetchData();
-    
-    // 每30秒自动刷新
+
+    // Auto refresh
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [symbol, market, timeFrame]);
 
-  // 根据时间周期聚合数据
+  // 根据时间周期聚合数据 (Only for 'intraday' mode if needed, others are pre-fetched)
+  // Since we fetch pre-aggregated data for 5m/15m etc, we can bypass this for those modes.
   const aggregateData = (rawData: IntradayDataPoint[], frame: TimeFrame): IntradayDataPoint[] => {
-    if (frame === 'intraday' || rawData.length === 0) {
-      return rawData;
-    }
-    
-    const intervalMinutes = {
-      '1m': 1,
-      '5m': 5,
-      '15m': 15,
-      '30m': 30,
-      '60m': 60,
-      'daily': 240, // 4小时作为一天
-    }[frame] || 1;
-    
-    const aggregated: IntradayDataPoint[] = [];
-    let currentBucket: IntradayDataPoint[] = [];
-    let bucketStartMinute = 0;
-    
-    rawData.forEach((point, index) => {
-      const [hours, minutes] = point.time.split(':').map(Number);
-      const totalMinutes = hours * 60 + minutes;
-      
-      if (index === 0) {
-        bucketStartMinute = Math.floor(totalMinutes / intervalMinutes) * intervalMinutes;
-      }
-      
-      const currentBucketStart = Math.floor(totalMinutes / intervalMinutes) * intervalMinutes;
-      
-      if (currentBucketStart !== bucketStartMinute && currentBucket.length > 0) {
-        // 聚合当前bucket
-        const avgPrice = currentBucket.reduce((sum, p) => sum + p.price, 0) / currentBucket.length;
-        const totalVolume = currentBucket.reduce((sum, p) => sum + p.volume, 0);
-        const totalAmount = currentBucket.reduce((sum, p) => sum + p.amount, 0);
-        
-        aggregated.push({
-          time: currentBucket[0].time,
-          price: avgPrice,
-          volume: totalVolume,
-          amount: totalAmount,
-        });
-        
-        currentBucket = [];
-        bucketStartMinute = currentBucketStart;
-      }
-      
-      currentBucket.push(point);
-    });
-    
-    // 处理最后一个bucket
-    if (currentBucket.length > 0) {
-      const avgPrice = currentBucket.reduce((sum, p) => sum + p.price, 0) / currentBucket.length;
-      const totalVolume = currentBucket.reduce((sum, p) => sum + p.volume, 0);
-      const totalAmount = currentBucket.reduce((sum, p) => sum + p.amount, 0);
-      
-      aggregated.push({
-        time: currentBucket[0].time,
-        price: avgPrice,
-        volume: totalVolume,
-        amount: totalAmount,
-      });
-    }
-    
-    return aggregated;
+    if (frame !== 'intraday') return rawData;
+    // ... existing 'intraday' aggregation logic if rawData is 1m ...
+    // But 'intraday' frame means we WANT 1m (or whatever backend gave). 
+    // Backend gives 1m for intraday.
+    return rawData;
   };
 
-  const chartData = aggregateData(data, timeFrame);
-  
+  const chartData = data; // Directly use fetched data (aggregated by backend or simple 1m)
+
   // 买入卖出信号配对算法（FIFO先进先出）
   const pairSignals = (signals: TradingSignal[]): TradingSignal[] => {
     const pairedSignals: TradingSignal[] = [];
     const openBuySignals: TradingSignal[] = []; // 未平仓的买入信号
-    
+
     signals.forEach((signal, index) => {
       if (signal.type === 'buy') {
         // 买入信号：分配交易ID并加入未平仓列表
@@ -213,7 +202,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
         const buySignal = openBuySignals.shift()!;
         const profitLoss = signal.price - buySignal.price;
         const profitLossPercent = (profitLoss / buySignal.price) * 100;
-        
+
         const sellSignal = {
           ...signal,
           tradeId: buySignal.tradeId,
@@ -221,7 +210,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
           profitLoss,
           profitLossPercent,
         };
-        
+
         // 更新买入信号的配对信息
         const buyIndex = pairedSignals.findIndex(s => s.tradeId === buySignal.tradeId);
         if (buyIndex !== -1) {
@@ -232,19 +221,19 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
             profitLossPercent,
           };
         }
-        
+
         pairedSignals.push(sellSignal);
       } else {
         // 其他信号（hold或未匹配的sell）
         pairedSignals.push(signal);
       }
     });
-    
+
     return pairedSignals;
   };
-  
+
   const pairedSignals = pairSignals(signals);
-  
+
   // 将信号数据合并到chartData中
   const chartDataWithSignals = chartData.map(point => {
     const signal = pairedSignals.find(s => s.time === point.time);
@@ -255,7 +244,7 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
       signal: signal || null,
     };
   });
-  
+
   // 调试日志
   console.log('[IntradayChart] Data prepared:', {
     totalDataPoints: chartDataWithSignals.length,
@@ -268,9 +257,9 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
   // 自定义Tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload || !payload[0]) return null;
-    
+
     const data = payload[0].payload;
-    
+
     return (
       <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
         <div className="text-sm font-semibold mb-2">{data.time}</div>
@@ -288,74 +277,97 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
     );
   };
 
-  // 自定义信号点渲染函数
+  // 自定义信号点渲染函数 - 使用清晰的箭头标识
   const renderSignalDot = (props: any) => {
     const { cx, cy, payload } = props;
     if (!payload.signal) return <g />;
-    
+
     const signal = payload.signal;
+    const isBuy = signal.type === 'buy';
     const isResonance = signal.resonance && signal.resonance.level >= 2;
-    const fillColor = signal.type === 'buy' ? '#ef4444' : '#22c55e';
-    const strokeColor = signal.type === 'buy' ? '#dc2626' : '#16a34a';
-    
-    // 检查是否是悬停的信号或其配对信号
+
+    // 中国习惯：红买绿卖
+    const mainColor = isBuy ? '#ef4444' : '#22c55e'; // 红色买入，绿色卖出
+    const glowColor = isBuy ? '#fca5a5' : '#86efac'; // 发光效果颜色
+
+    // 悬停状态
     const isHovered = hoveredSignal?.time === signal.time;
     const isPaired = hoveredSignal?.tradeId && signal.tradeId === hoveredSignal.tradeId && hoveredSignal.time !== signal.time;
-    
-    // 根据状态调整尺寸
-    let radius = isResonance ? 10 : 7;
-    if (isHovered) radius += 3; // 悬停时放大
-    if (isPaired) radius += 2; // 配对信号也放大
-    
+
+    // 箭头大小
+    const size = isResonance ? 14 : 10;
+    const scale = isHovered ? 1.3 : isPaired ? 1.2 : 1;
+    const finalSize = size * scale;
+
+    // 买入箭头朝上 ▲，卖出箭头朝下 ▼
+    const arrowPath = isBuy
+      ? `M ${cx} ${cy - finalSize} L ${cx - finalSize * 0.7} ${cy + finalSize * 0.5} L ${cx + finalSize * 0.7} ${cy + finalSize * 0.5} Z`
+      : `M ${cx} ${cy + finalSize} L ${cx - finalSize * 0.7} ${cy - finalSize * 0.5} L ${cx + finalSize * 0.7} ${cy - finalSize * 0.5} Z`;
+
     return (
-      <g>
-        <circle
-          cx={cx}
-          cy={cy}
-          r={radius}
-          fill={fillColor}
-          stroke={strokeColor}
-          strokeWidth={isResonance ? 3 : 2.5}
-          opacity={isHovered || isPaired ? 1 : 0.9}
-          style={{ cursor: 'pointer' }}
-          onClick={() => {
-            setSelectedSignal(signal);
-            setDialogOpen(true);
-          }}
-          onMouseEnter={() => setHoveredSignal(signal)}
-          onMouseLeave={() => setHoveredSignal(null)}
+      <g style={{ cursor: 'pointer' }}
+        onClick={() => {
+          setSelectedSignal(signal);
+          setDialogOpen(true);
+        }}
+        onMouseEnter={() => setHoveredSignal(signal)}
+        onMouseLeave={() => setHoveredSignal(null)}>
+        {/* 发光效果 */}
+        <defs>
+          <filter id={`glow-${signal.time}`} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* 外圈发光 (共振或悬停时) */}
+        {(isResonance || isHovered) && (
+          <circle
+            cx={cx}
+            cy={cy}
+            r={finalSize + 8}
+            fill="none"
+            stroke={glowColor}
+            strokeWidth={2}
+            opacity={0.6}
+            strokeDasharray={isResonance ? "4 2" : "none"}
+          />
+        )}
+
+        {/* 白色描边底层（提升对比度） */}
+        <path
+          d={arrowPath}
+          fill="white"
+          stroke="white"
+          strokeWidth={3}
+          opacity={0.8}
         />
-        {/* 配对高亮效果 */}
+
+        {/* 主箭头 */}
+        <path
+          d={arrowPath}
+          fill={mainColor}
+          stroke={mainColor}
+          strokeWidth={1.5}
+          filter={isHovered ? `url(#glow-${signal.time})` : undefined}
+          opacity={1}
+        />
+
+        {/* 配对高亮 */}
         {isPaired && (
           <circle
             cx={cx}
             cy={cy}
-            r={radius + 5}
+            r={finalSize + 5}
             fill="none"
-            stroke={fillColor}
+            stroke={mainColor}
             strokeWidth={2}
-            opacity={0.6}
-            style={{ pointerEvents: 'none' }}
-          />
-        )}
-        {isResonance && (
-          <circle
-            cx={cx}
-            cy={cy}
-            r={15}
-            fill="none"
-            stroke={fillColor}
-            strokeWidth={2.5}
-            strokeDasharray="4 4"
             opacity={0.8}
-            style={{ cursor: 'pointer' }}
-            onClick={() => {
-              setSelectedSignal(signal);
-              setDialogOpen(true);
-            }}
           />
         )}
-
       </g>
     );
   };
@@ -399,14 +411,14 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
             </Button>
           ))}
         </div>
-        
+
         <div className="flex items-center gap-4 text-sm">
           {marketStatus && (
             <div className="flex items-center gap-2">
               <span className={cn(
                 "px-2 py-1 rounded text-xs font-medium",
-                marketStatus.isOpen 
-                  ? "bg-green-500/20 text-green-400" 
+                marketStatus.isOpen
+                  ? "bg-green-500/20 text-green-400"
                   : "bg-amber-500/20 text-amber-400"
               )}>
                 {marketStatus.status}
@@ -429,18 +441,32 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
       {/* 走势图 */}
       <ResponsiveContainer width="100%" height={400}>
         <ComposedChart data={chartDataWithSignals} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={true} vertical={false} />
           <XAxis
             dataKey="time"
             stroke="#888"
-            tick={{ fill: '#888', fontSize: 12 }}
-            tickFormatter={(value) => value}
+            tick={{ fill: 'var(--foreground)', fontSize: 11 }}
+            tickFormatter={(value) => {
+              // 简化显示：只显示时间或日期部分
+              if (timeFrame === 'daily') {
+                // 日线只显示月-日
+                return value.length > 5 ? value.substring(5) : value;
+              }
+              // 分时/分钟线只显示时间
+              if (value.includes(' ')) {
+                return value.split(' ')[1] || value;
+              }
+              return value;
+            }}
+            interval="preserveStartEnd"
+            minTickGap={60}
           />
           <YAxis
             stroke="#888"
             tick={{ fill: '#888', fontSize: 12 }}
-            domain={['dataMin - 5', 'dataMax + 5']}
+            domain={['auto', 'auto']}
             tickFormatter={(value) => value.toFixed(2)}
+            tickCount={5}
           />
           <Tooltip content={<CustomTooltip />} />
           <Line
@@ -469,6 +495,11 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
         </ComposedChart>
       </ResponsiveContainer>
 
+      {/* 技术指标面板 */}
+      {data.length > 0 && (
+        <TechnicalIndicatorsPanel data={data} timeFrame={timeFrame} />
+      )}
+
       {/* 信号详情弹窗 */}
       <SignalDetailDialog
         open={dialogOpen}
@@ -476,11 +507,11 @@ export function IntradayChart({ symbol, market }: IntradayChartProps) {
         signal={selectedSignal}
         currentPrice={currentPrice}
       />
-      
+
       {/* 模拟交易盈亏分析 */}
       {tradingSimulation && (
         <div className="mt-6">
-          <TradingSimulationCard 
+          <TradingSimulationCard
             simulation={tradingSimulation}
             currency={market === 'US' ? 'USD' : market === 'HK' ? 'HKD' : 'CNY'}
           />

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import type { StockAnalysis } from '@shared/stock-types';
 import { StockChart } from './StockChart';
 import { TradingStrategyCard } from './TradingStrategyCard';
@@ -21,17 +21,18 @@ export function StockAnalysisView({ analysis }: StockAnalysisViewProps) {
   const { stockInfo, tradingSignal, momentum, keyLevels, patterns, volumeAnalysis, recommendation } = analysis;
 
   const getSignalColor = (signal: string) => {
+    // 中国市场习惯：红色买入 (涨=红), 绿色卖出 (跌=绿)
     switch (signal) {
       case 'STRONG_BUY':
-        return 'bg-green-600 text-white';
+        return 'bg-red-600 text-white';
       case 'BUY':
-        return 'bg-green-500 text-white';
+        return 'bg-red-500 text-white';
       case 'HOLD':
         return 'bg-yellow-500 text-white';
       case 'SELL':
-        return 'bg-red-500 text-white';
+        return 'bg-green-500 text-white';
       case 'STRONG_SELL':
-        return 'bg-red-600 text-white';
+        return 'bg-green-600 text-white';
       default:
         return 'bg-gray-500 text-white';
     }
@@ -80,15 +81,15 @@ export function StockAnalysisView({ analysis }: StockAnalysisViewProps) {
   return (
     <div className="space-y-6">
       {/* 实时价格卡片 */}
-      <RealtimePriceCard 
-        symbol={stockInfo.symbol} 
+      <RealtimePriceCard
+        symbol={stockInfo.symbol}
         market={stockInfo.market || 'US'}
         autoRefresh={true}
         refreshInterval={30}
       />
 
       {/* 分时走势图和智能买卖点 */}
-      <IntradayChart 
+      <IntradayChart
         symbol={stockInfo.symbol}
         market={stockInfo.market || 'US'}
       />
@@ -101,16 +102,75 @@ export function StockAnalysisView({ analysis }: StockAnalysisViewProps) {
               <CardTitle className="text-2xl">{stockInfo.name}</CardTitle>
               <CardDescription className="text-lg">{stockInfo.symbol}</CardDescription>
             </div>
-            <Badge className={getSignalColor(tradingSignal.signal)}>
-              {getSignalText(tradingSignal.signal)}
-            </Badge>
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex gap-2">
+                {stockInfo.marketStatus && (
+                  <Badge variant={stockInfo.marketStatus === 'OPEN' ? 'default' : 'secondary'}
+                    className={stockInfo.marketStatus === 'OPEN' ? 'bg-up hover:opacity-90' : // Using global BG-UP (Red for CN) logic for "Open/Trading"? No, Trading is active. Let's stick to standard green for "Open" status context, or red if CN convention implies "Red Hot Market". Standard Green for "Active" is safer for Status.
+                      stockInfo.marketStatus === 'PRE' || stockInfo.marketStatus === 'POST' ? 'bg-amber-500 hover:bg-amber-600' : ''}>
+                    {stockInfo.marketStatus === 'OPEN' ? '交易中' :
+                      stockInfo.marketStatus === 'PRE' ? '盘前交易' :
+                        stockInfo.marketStatus === 'POST' ? '盘后交易' : '已收盘'}
+                  </Badge>
+                )}
+                <Badge className={getSignalColor(tradingSignal.signal)}>
+                  {getSignalText(tradingSignal.signal)}
+                </Badge>
+              </div>
+              {stockInfo.marketTime && (
+                <span className="text-xs text-muted-foreground">
+                  {stockInfo.market === 'US' ? '美东时间' : '当地时间'}: {stockInfo.marketTime}
+                </span>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">当前价格</p>
-              <p className="text-2xl font-bold">{stockInfo.currentPrice?.toFixed(2)} {stockInfo.currency}</p>
+              <p className={`text-3xl font-bold ${stockInfo.changePercent && stockInfo.changePercent > 0 ? 'text-up' :
+                stockInfo.changePercent && stockInfo.changePercent < 0 ? 'text-down' :
+                  'text-foreground'
+                }`}>
+                {stockInfo.currentPrice?.toFixed(2)}
+                <span className="text-lg ml-1">{stockInfo.currency}</span>
+              </p>
+              {/* Show Change and Percent on new line */}
+              {(stockInfo.changePercent !== undefined && stockInfo.changeAmount !== undefined) && (
+                <div className={`flex items-center gap-1 text-base font-medium mt-1 ${stockInfo.changePercent > 0 ? 'text-up' :
+                  stockInfo.changePercent < 0 ? 'text-down' :
+                    'text-muted-foreground'
+                  }`}>
+                  {stockInfo.changePercent > 0 ? <ArrowUp className="w-4 h-4" /> :
+                    stockInfo.changePercent < 0 ? <ArrowDown className="w-4 h-4" /> : null}
+                  <span>{stockInfo.changeAmount > 0 ? '+' : ''}{stockInfo.changeAmount.toFixed(2)}</span>
+                  <span>({stockInfo.changePercent > 0 ? '+' : ''}{stockInfo.changePercent.toFixed(2)}%)</span>
+                </div>
+              )}
+
+              {/* Market Time Display */}
+              <p className="text-xs text-muted-foreground mt-1">
+                {stockInfo.market === 'US' ? '美东时间' : '当地时间'}: {stockInfo.marketTime || '更新中...'}
+              </p>
+
+              {/* Show Pre/Post Market Price if available */}
+              {(stockInfo.marketStatus === 'PRE' && stockInfo.preMarketPrice) && (
+                <div className="mt-2 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                  <p className="text-xs text-amber-600 font-semibold">盘前交易:</p>
+                  <p className="text-sm font-bold text-amber-600">{stockInfo.preMarketPrice.toFixed(2)}</p>
+                </div>
+              )}
+              {(stockInfo.marketStatus === 'POST' && stockInfo.postMarketPrice) && (
+                <div className="mt-2 p-2 bg-blue-500/10 rounded border border-blue-500/20">
+                  <p className="text-xs text-blue-600 font-semibold">盘后交易:</p>
+                  <p className="text-sm font-bold text-blue-600">{stockInfo.postMarketPrice.toFixed(2)}</p>
+                </div>
+              )}
+              {/* Show Closed Price hint if closed */}
+              {(stockInfo.marketStatus === 'CLOSED' && stockInfo.postMarketPrice) && (
+                <p className="text-xs text-muted-foreground mt-1">盘后收盘: {stockInfo.postMarketPrice.toFixed(2)}</p>
+              )}
             </div>
             <div>
               <p className="text-sm text-muted-foreground">52周最高</p>
@@ -296,8 +356,8 @@ export function StockAnalysisView({ analysis }: StockAnalysisViewProps) {
           <CardHeader>
             <CardTitle>成交量分析</CardTitle>
             <CardDescription>
-              {volumeAnalysis.volumeTrend === 'INCREASING' ? '成交量放大' : 
-               volumeAnalysis.volumeTrend === 'DECREASING' ? '成交量萎缩' : '成交量平稳'}
+              {volumeAnalysis.volumeTrend === 'INCREASING' ? '成交量放大' :
+                volumeAnalysis.volumeTrend === 'DECREASING' ? '成交量萎缩' : '成交量平稳'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -322,50 +382,54 @@ export function StockAnalysisView({ analysis }: StockAnalysisViewProps) {
       </div>
 
       {/* K线形态 */}
-      {patterns.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>识别的K线形态</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {patterns.map((pattern, index) => (
-                <div key={index} className="border rounded-lg p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold">{pattern.name}</h4>
-                    <Badge variant={pattern.type === 'BULLISH' ? 'default' : pattern.type === 'BEARISH' ? 'destructive' : 'secondary'}>
-                      {pattern.type === 'BULLISH' ? '看涨' : pattern.type === 'BEARISH' ? '看跌' : '中性'}
-                    </Badge>
+      {
+        patterns.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>识别的K线形态</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {patterns.map((pattern, index) => (
+                  <div key={index} className="border rounded-lg p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold">{pattern.name}</h4>
+                      <Badge variant={pattern.type === 'BULLISH' ? 'default' : pattern.type === 'BEARISH' ? 'destructive' : 'secondary'}>
+                        {pattern.type === 'BULLISH' ? '看涨' : pattern.type === 'BEARISH' ? '看跌' : '中性'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{pattern.description}</p>
+                    <p className="text-xs text-muted-foreground">可靠性: {pattern.reliability}%</p>
                   </div>
-                  <p className="text-sm text-muted-foreground">{pattern.description}</p>
-                  <p className="text-xs text-muted-foreground">可靠性: {pattern.reliability}%</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      }
 
       {/* 交易策略推荐 */}
-      {analysis.tradingStrategies && (
-        <div className="space-y-6">
-          <h2 className="text-2xl font-bold">交易策略推荐</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <TradingStrategyCard
-              title="剥头皮策略"
-              description="适合日内短线交易，快进快出"
-              strategy={analysis.tradingStrategies.scalping}
-              icon="scalping"
-            />
-            <TradingStrategyCard
-              title="波段交易策略"
-              description="适合中短期持仓，捕捉趋势波段"
-              strategy={analysis.tradingStrategies.swing}
-              icon="swing"
-            />
+      {
+        analysis.tradingStrategies && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold">交易策略推荐</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <TradingStrategyCard
+                title="剥头皮策略"
+                description="适合日内短线交易，快进快出"
+                strategy={analysis.tradingStrategies.scalping}
+                icon="scalping"
+              />
+              <TradingStrategyCard
+                title="波段交易策略"
+                description="适合中短期持仓，捕捉趋势波段"
+                strategy={analysis.tradingStrategies.swing}
+                icon="swing"
+              />
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

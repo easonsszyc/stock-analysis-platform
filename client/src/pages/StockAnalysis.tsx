@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,17 +40,17 @@ export default function StockAnalysis() {
     setSearching(true);
     setCandidates([]);
     setSelectedStock(null);
-    
+
     try {
       const response = await fetch(`/api/stock/search?query=${encodeURIComponent(searchQuery.trim())}`);
       const result = await response.json();
-      
+
       if (response.status === 503) {
         // API配额耗尽
         alert(result.error || '数据服务暂时不可用，请稍后再试。');
       } else if (result.success && result.data.length > 0) {
         setCandidates(result.data);
-        
+
         // 如果只有一个结果，自动选中
         if (result.data.length === 1) {
           setSelectedStock(result.data[0]);
@@ -68,7 +69,7 @@ export default function StockAnalysis() {
   // 分析股票
   const handleAnalyze = async () => {
     if (!selectedStock) {
-      alert('请先搜索并选择股票');
+      toast.error('请先搜索并选择股票');
       return;
     }
 
@@ -77,22 +78,42 @@ export default function StockAnalysis() {
       const response = await fetch('/api/stock/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          symbol: selectedStock.symbol, 
-          market: selectedStock.market, 
-          period 
+        body: JSON.stringify({
+          symbol: selectedStock.symbol,
+          market: selectedStock.market,
+          period
         })
       });
+
+      // 处理非 JSON 响应（例如 500 错误页面）
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error('Non-JSON response:', text);
+        throw new Error(response.status === 500 ? '服务器内部错误 (500)：可能未配置数据库连接。' : `请求失败 (${response.status})`);
+      }
 
       const result = await response.json();
       if (result.success) {
         setCurrentAnalysis(result.data);
+        toast.success('分析完成');
       } else {
-        alert(result.error || '分析失败');
+        console.error('API Error:', result.error);
+        toast.error(result.error || '分析失败', {
+          description: '请检查控制台获取更多详情',
+          duration: 5000,
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Analysis error:', error);
-      alert('分析失败，请检查网络连接');
+      toast.error('分析失败', {
+        description: error.message || '请检查网络连接',
+        duration: 10000, // Show for 10 seconds
+        action: {
+          label: '复制错误',
+          onClick: () => navigator.clipboard.writeText(error.message || 'Unknown error'),
+        },
+      });
     } finally {
       setAnalyzing(false);
     }
@@ -129,7 +150,7 @@ export default function StockAnalysis() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300 dark:bg-gradient-to-br dark:from-slate-900 dark:via-blue-900 dark:to-slate-900">
       <div className="relative">
         <div className="container">
           <div className="max-w-4xl mx-auto text-center space-y-4 animate-fade-in">
@@ -137,7 +158,7 @@ export default function StockAnalysis() {
               <BarChart3 className="w-12 h-12" />
               <h1 className="text-4xl md:text-5xl font-bold">智能股票技术分析平台</h1>
             </div>
-            <p className="text-xl text-blue-100">
+            <p className="text-xl text-muted-foreground dark:text-blue-100">
               支持中国大陆、香港和美国市场的专业技术分析
             </p>
             <div className="flex items-center justify-center gap-6 pt-4">
@@ -170,10 +191,10 @@ export default function StockAnalysis() {
 
           {/* 单股分析 */}
           <TabsContent value="single" className="space-y-8 animate-fade-in">
-            <Card className="max-w-4xl mx-auto shadow-lg card-hover border-2 bg-black">
-              <CardHeader className="bg-black">
+            <Card className="max-w-4xl mx-auto shadow-lg card-hover border-2 bg-card dark:bg-black/40 dark:border-blue-500/30 dark:backdrop-blur-sm">
+              <CardHeader className="bg-card dark:bg-transparent">
                 <CardTitle className="text-2xl">股票技术分析</CardTitle>
-                <CardDescription className="text-base">
+                <CardDescription className="text-base dark:text-blue-200/70">
                   输入股票代码，系统将自动识别市场并进行全面分析
                 </CardDescription>
               </CardHeader>
@@ -191,8 +212,8 @@ export default function StockAnalysis() {
                       className="text-lg h-12 border-2 focus:border-primary transition-smooth"
                       disabled={searching}
                     />
-                    <Button 
-                      onClick={handleSearch} 
+                    <Button
+                      onClick={handleSearch}
                       disabled={searching || !searchQuery.trim()}
                       size="lg"
                       className="px-8 h-12 text-base"
@@ -221,17 +242,21 @@ export default function StockAnalysis() {
                         <button
                           key={candidate.symbol}
                           onClick={() => setSelectedStock(candidate)}
-                          className={`p-4 rounded-lg border-2 text-left transition-smooth hover:shadow-md ${
-                            selectedStock?.symbol === candidate.symbol
-                              ? 'border-primary bg-gray-900'
-                              : 'border-gray-700 hover:border-primary/50 bg-gray-900'
-                          }`}
+                          className={`p-4 rounded-lg border-2 text-left transition-smooth hover:shadow-md ${selectedStock?.symbol === candidate.symbol
+                            ? 'border-primary bg-primary/10' // Use theme primary
+                            : 'border-border hover:border-primary/50 bg-card' // Use theme card
+                            }`}
                         >
-                          <div className="font-semibold text-lg">
+                          <div className="font-semibold text-lg text-foreground">
+                            {/* Prioritize Chinese name, fall back to English */}
                             {candidate.symbol} - {candidate.nameCn || candidate.name}
                           </div>
                           <div className="text-sm text-muted-foreground mt-1">
-                            {candidate.exchange} · {candidate.market}市场 · {candidate.currency}
+                            {/* Display exchange in Chinese */}
+                            {candidate.exchange === 'SSE' ? '沪市' :
+                              candidate.exchange === 'SZSE' ? '深市' :
+                                candidate.exchange === 'HKEX' ? '港股' :
+                                  candidate.market === 'US' ? '美股' : candidate.exchange} · {candidate.currency}
                           </div>
                         </button>
                       ))}
@@ -241,7 +266,7 @@ export default function StockAnalysis() {
 
                 {/* 已选股票 */}
                 {selectedStock && (
-                  <Card className="bg-gray-900 border-2 border-primary/30 animate-fade-in">
+                  <Card className="bg-muted/30 border-2 border-primary/30 animate-fade-in">
                     <CardContent className="pt-6">
                       <div className="flex items-start justify-between">
                         <div>
@@ -249,7 +274,10 @@ export default function StockAnalysis() {
                             {selectedStock.symbol} - {selectedStock.nameCn || selectedStock.name}
                           </h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {selectedStock.exchange} · {selectedStock.market}市场 · {selectedStock.currency}
+                            {selectedStock.exchange === 'SSE' ? '沪市' :
+                              selectedStock.exchange === 'SZSE' ? '深市' :
+                                selectedStock.exchange === 'HKEX' ? '港股' :
+                                  selectedStock.market === 'US' ? '美股' : selectedStock.exchange} · {selectedStock.currency}
                           </p>
                         </div>
                         <div className="flex gap-2">

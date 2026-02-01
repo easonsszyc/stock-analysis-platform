@@ -27,7 +27,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-gray-700 bg-black/95 backdrop-blur supports-[backdrop-filter]:bg-black/80">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 dark:bg-black/95 dark:border-gray-800 transition-colors duration-300">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
@@ -40,7 +40,7 @@ export function Header() {
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location === item.path;
-            
+
             return (
               <Button
                 key={item.path}
@@ -85,7 +85,7 @@ export function Header() {
               <Moon className="w-5 h-5" />
             )}
           </Button>
-          
+
           <Button
             variant="ghost"
             size="icon"
@@ -103,12 +103,12 @@ export function Header() {
 
       {/* 移动端菜单展开内容 */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-700 bg-black/95 backdrop-blur">
+        <div className="md:hidden border-t border-border bg-background/95 backdrop-blur transition-colors duration-300">
           <nav className="container py-4 flex flex-col gap-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location === item.path;
-              
+
               return (
                 <Button
                   key={item.path}

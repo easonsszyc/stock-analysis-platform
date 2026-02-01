@@ -50,7 +50,7 @@ export function RealtimePriceCard({
       }
 
       const data: RealtimeQuote = await response.json();
-      
+
       // 检测价格变化并触发动画
       if (quote && data.currentPrice !== quote.currentPrice) {
         setPriceAnimation(data.currentPrice > quote.currentPrice ? 'up' : 'down');
@@ -103,11 +103,13 @@ export function RealtimePriceCard({
     );
   }
 
-  const isPositive = quote.change >= 0;
-  // 中国市场习惯：红涨绿跌
-  const changeColor = isPositive ? 'text-red-500' : 'text-green-500';
-  const bgColor = isPositive ? 'bg-red-500/10' : 'bg-green-500/10';
-  const borderColor = isPositive ? 'border-red-500/30' : 'border-green-500/30';
+  const isPositive = quote.change > 0; // Strictly greater for positive
+  const isNegative = quote.change < 0;
+  const isNeutral = quote.change === 0;
+  // 中国市场习惯：红涨绿跌, 平盘灰色
+  const changeColor = isNeutral ? 'text-muted-foreground' : (isPositive ? 'text-red-500' : 'text-green-500');
+  const bgColor = isNeutral ? 'bg-muted/50' : (isPositive ? 'bg-red-500/10' : 'bg-green-500/10');
+  const borderColor = isNeutral ? 'border-muted' : (isPositive ? 'border-red-500/30' : 'border-green-500/30');
 
   return (
     <Card className="border-border/50 bg-card/80 backdrop-blur-sm transition-all duration-300 shadow-lg shadow-black/20">
@@ -118,14 +120,22 @@ export function RealtimePriceCard({
             <div className="flex items-center gap-3 mb-2">
               <h3 className="text-2xl font-bold">{quote.name || quote.symbol}</h3>
               <span className="text-sm text-muted-foreground">{quote.symbol}</span>
-              {quote.sessionLabel && quote.market === 'US' && (
+              {quote.sessionLabel && (
                 <span className={cn(
                   "px-2 py-1 rounded text-xs font-medium",
-                  quote.sessionLabel === '盘中价' 
-                    ? "bg-green-500/20 text-green-400" 
-                    : "bg-amber-500/20 text-amber-400"
+                  quote.sessionLabel === '盘中价'
+                    ? "bg-green-500/20 text-green-400"
+                    : quote.sessionLabel === '盘前价' || quote.sessionLabel === '盘后价'
+                      ? "bg-amber-500/20 text-amber-400"
+                      : "bg-gray-500/20 text-gray-400"
                 )}>
                   {quote.sessionLabel}
+                </span>
+              )}
+              {/* 交易日期时间 */}
+              {quote.timestamp && (
+                <span className="text-xs text-muted-foreground">
+                  {quote.timestamp}
                 </span>
               )}
             </div>
@@ -146,9 +156,9 @@ export function RealtimePriceCard({
               <div className={cn('flex items-center gap-2', changeColor)}>
                 {isPositive ? (
                   <TrendingUp className="h-6 w-6" />
-                ) : (
+                ) : isNegative ? (
                   <TrendingDown className="h-6 w-6" />
-                )}
+                ) : null /* No arrow for neutral */}
                 <div className="text-xl font-semibold">
                   <div>{isPositive ? '+' : ''}{quote.change.toFixed(2)}</div>
                   <div className="text-sm">
@@ -195,7 +205,7 @@ export function RealtimePriceCard({
             {autoRefresh && (
               <RefreshCw className="h-3 w-3 animate-spin" />
             )}
-            <span>更新于: {lastUpdate.toLocaleTimeString()}</span>
+            <span>更新于: {lastUpdate.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })} {lastUpdate.toLocaleTimeString()}</span>
           </div>
         </div>
       </CardContent>

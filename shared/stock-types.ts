@@ -18,6 +18,12 @@ export interface StockInfo {
   fiftyTwoWeekLow?: number;
   marketCap?: number;
   volume?: number;
+  marketStatus?: 'OPEN' | 'CLOSED' | 'PRE' | 'POST';
+  marketTime?: string;
+  preMarketPrice?: number;
+  postMarketPrice?: number;
+  changePercent?: number;
+  changeAmount?: number;
 }
 
 // 历史价格数据点

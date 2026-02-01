@@ -69,10 +69,10 @@ class TechnicalAnalysisService {
   calculateMACD(prices: number[]): { macd: number[]; signal: number[]; histogram: number[] } {
     const ema12 = this.calculateEMA(prices, 12);
     const ema26 = this.calculateEMA(prices, 26);
-    
+
     const macd = ema12.map((val, i) => val - ema26[i]);
     const signal = this.calculateEMA(macd.filter(v => !isNaN(v)), 9);
-    
+
     // 补齐signal数组长度
     const fullSignal = new Array(macd.length - signal.length).fill(NaN).concat(signal);
     const histogram = macd.map((val, i) => val - fullSignal[i]);
@@ -276,6 +276,17 @@ class TechnicalAnalysisService {
    */
   generateTradingSignal(data: (PriceDataPoint & TechnicalIndicators)[]): TradingSignal {
     const latest = data[data.length - 1];
+    // If less than 2 points, we can't do comparison, so use latest as prev or return neutral
+    if (data.length < 2) {
+      return {
+        signal: 'HOLD',
+        confidence: 0,
+        reasons: ['数据不足，无法生成有效信号'],
+        entryPrice: latest.close,
+        stopLoss: latest.close * 0.95,
+        takeProfit: latest.close * 1.05
+      };
+    }
     const prev = data[data.length - 2];
 
     const reasons: string[] = [];
@@ -403,6 +414,7 @@ class TechnicalAnalysisService {
   identifyCandlestickPatterns(data: PriceDataPoint[]): CandlestickPattern[] {
     const patterns: CandlestickPattern[] = [];
     const latest = data[data.length - 1];
+    if (data.length < 2) return [];
     const prev = data[data.length - 2];
 
     // 锤子线

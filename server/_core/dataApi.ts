@@ -13,11 +13,55 @@ export type DataApiCallOptions = {
   formData?: Record<string, unknown>;
 };
 
+async function callYahooFinanceDirectly(options: DataApiCallOptions): Promise<unknown> {
+  const query = options.query || {};
+  const symbol = query.symbol as string;
+
+  if (!symbol) {
+    throw new Error("Symbol is required for Yahoo Finance API");
+  }
+
+  // Build query string
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (key !== 'symbol' && value !== undefined && value !== null) {
+      params.append(key, String(value));
+    }
+  }
+
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?${params.toString()}`;
+
+  console.log(`[YahooFinance] Direct fetch: ${url}`);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
+      }
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`[YahooFinance] Error ${response.status}: ${text}`);
+      throw new Error(`Yahoo Finance API failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("[YahooFinance] Direct fetch failed", error);
+    throw error;
+  }
+}
+
 export async function callDataApi(
   apiId: string,
   options: DataApiCallOptions = {}
 ): Promise<unknown> {
   if (!ENV.forgeApiUrl) {
+    if (apiId === 'YahooFinance/get_stock_chart') {
+      return callYahooFinanceDirectly(options);
+    }
     throw new Error("BUILT_IN_FORGE_API_URL is not configured");
   }
   if (!ENV.forgeApiKey) {

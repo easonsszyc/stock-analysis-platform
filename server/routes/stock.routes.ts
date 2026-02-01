@@ -83,7 +83,7 @@ router.get('/search', async (req, res) => {
     } as ApiResponse<typeof results>);
   } catch (error: any) {
     console.error('Search stock error:', error);
-    
+
     // 检测API配额耗尽错误
     if (error.message === 'API_QUOTA_EXHAUSTED') {
       return res.status(503).json({
@@ -91,10 +91,47 @@ router.get('/search', async (req, res) => {
         error: '数据服务暂时不可用，请稍后再试。如果问题持续，请联系Manus支持团队。'
       } as ApiResponse<null>);
     }
-    
+
     res.status(500).json({
       success: false,
       error: error.message || '搜索失败'
+    } as ApiResponse<null>);
+  }
+});
+
+/**
+ * 获取股票历史K线数据 (支持自定义周期和范围)
+ */
+router.get('/history', async (req, res) => {
+  try {
+    const { symbol, market, range = '1y', interval = '1d' } = req.query as any;
+
+    if (!symbol || !market) {
+      return res.status(400).json({
+        success: false,
+        error: '请提供股票代码和市场类型'
+      } as ApiResponse<null>);
+    }
+
+    const { stockInfo, priceData } = await stockDataService.getStockData(
+      symbol,
+      market,
+      range,
+      interval
+    );
+
+    res.json({
+      success: true,
+      data: {
+        stockInfo,
+        priceData
+      }
+    } as ApiResponse<any>);
+  } catch (error: any) {
+    console.error('Fetch history error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || '获取数据失败'
     } as ApiResponse<null>);
   }
 });
@@ -116,7 +153,7 @@ router.post('/analyze', async (req, res) => {
     // 获取股票数据
     const { stockInfo, priceData } = await stockDataService.getStockData(symbol, market, period);
 
-    if (priceData.length < 60) {
+    if (priceData.length < 1) {
       return res.status(400).json({
         success: false,
         error: '数据不足，无法进行技术分析'
@@ -190,7 +227,7 @@ router.post('/analyze', async (req, res) => {
         reasoning
       }
     };
-    
+
     // 生成交易策略推荐
     const scalpingStrategy = tradingStrategyService.evaluateScalpingStrategy(analysis);
     const swingStrategy = tradingStrategyService.evaluateSwingStrategy(analysis);
@@ -265,6 +302,83 @@ router.post('/compare', async (req, res) => {
       success: false,
       error: error.message || '对比失败'
     } as ApiResponse<null>);
+  }
+});
+
+/**
+ * GET /api/stock/history-signals
+ * 获取历史数据的交易信号（用于日线图等）
+ */
+router.get('/history-signals', async (req, res) => {
+  try {
+    const { symbol, market, interval = '1d', range = '60d' } = req.query;
+
+    if (!symbol || !market) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: symbol, market'
+      });
+    }
+
+    const marketType = market as 'US' | 'HK' | 'CN';
+    if (!['US', 'HK', 'CN'].includes(marketType)) {
+      return res.status(400).json({ success: false, error: 'Invalid market type' });
+    }
+
+    // 获取历史数据
+    const historyData = await stockDataService.getStockData(
+      symbol as string,
+      marketType,
+      range as any,
+      interval as any
+    );
+
+    if (!historyData || !historyData.priceData || historyData.priceData.length === 0) {
+      return res.json({ success: true, data: { signals: [] } });
+    }
+
+    // 转换为日线信号分析需要的格式（包含OHLCV）
+    const priceData = historyData.priceData.map((p: any) => ({
+      date: p.date.substring(5), // MM-DD 格式
+      open: p.open,
+      high: p.high,
+      low: p.low,
+      close: p.close,
+      volume: p.volume,
+    }));
+
+    // 调试：打印第一条数据检查格式
+    console.log('[history-signals] Sample data:', priceData.slice(0, 3));
+
+    // 使用通达信公式的日线信号服务
+    const { analyzeDailySignals } = await import('../services/daily-signals.service');
+    const rawSignals = analyzeDailySignals(priceData, marketType);
+
+    // 过滤掉价格异常的信号（可能是数据质量问题）
+    const avgPrice = priceData.reduce((sum: number, p: any) => sum + p.close, 0) / priceData.length;
+    const signals = rawSignals.filter(s => {
+      const priceRatio = s.price / avgPrice;
+      // 信号价格应在平均价格的 0.2 ~ 5 倍范围内
+      return priceRatio > 0.2 && priceRatio < 5 && s.price > 0;
+    });
+
+    console.log('[history-signals] Raw signals:', rawSignals.length, 'Filtered signals:', signals.length);
+
+    res.json({
+      success: true,
+      data: {
+        signals,
+        interval,
+        range,
+        dataPoints: priceData.length,
+      }
+    });
+  } catch (error: any) {
+    console.error('History signals error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate signals'
+    });
   }
 });
 

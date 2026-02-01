@@ -44,104 +44,160 @@
 
 :root {
   /* 金融分析专业配色 - 以蓝色为主色调 */
-  --primary: oklch(0.5 0.15 250); /* 深蓝色 */
-  --primary-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.5 0.15 250);
+  /* 深蓝色 */
+  --primary-foreground: oklch(1 0 0);
   --sidebar-primary: oklch(0.45 0.15 250);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  
+
   /* 图表颜色 - 专业金融图表配色 */
-  --chart-1: oklch(0.65 0.18 250); /* 主趋势线 */
-  --chart-2: oklch(0.55 0.15 150); /* 成交量 */
-  --chart-3: oklch(0.6 0.12 30); /* 警告色 */
-  --chart-4: oklch(0.5 0.15 350); /* 强调色 */
-  --chart-5: oklch(0.45 0.1 250); /* 辅助线 */
-  
-  --radius: 0.75rem; /* 增加圆角 */
-  --background: oklch(0.99 0 0); /* 淡灰背景 */
-  --foreground: oklch(0.2 0.01 250);
-  --card: oklch(1 0 0); /* 纯白卡片 */
-  --card-foreground: oklch(0.2 0.01 250);
+  --chart-1: oklch(0.5 0.15 250);
+  /* 主趋势线 */
+  --chart-2: oklch(0.55 0.15 150);
+  /* 成交量 */
+  --chart-3: oklch(0.6 0.12 30);
+  /* 警告色 */
+  --chart-4: oklch(0.5 0.15 350);
+  /* 强调色 */
+  --chart-5: oklch(0.45 0.1 250);
+  /* 辅助线 */
+
+  --radius: 0.75rem;
+  /* 增加圆角 */
+
+  /* 统一背景设计 - 极简白风格 */
+  --background: oklch(1 0 0);
+  /* 纯白背景 */
+  --foreground: oklch(0.15 0 0);
+  /* 深灰黑文字，柔和但清晰 */
+
+  --card: oklch(1 0 0);
+  /* 纯白卡片，消除分割感 */
+  --card-foreground: oklch(0.15 0 0);
+
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.01 250);
-  --secondary: oklch(0.96 0.005 250);
-  --secondary-foreground: oklch(0.3 0.01 250);
-  --muted: oklch(0.95 0.005 250);
-  --muted-foreground: oklch(0.5 0.01 250);
-  --accent: oklch(0.96 0.01 250);
-  --accent-foreground: oklch(0.2 0.01 250);
-  --destructive: oklch(0.55 0.22 25); /* 红色警告 */
+  --popover-foreground: oklch(0.15 0 0);
+
+  --primary: oklch(0.1 0 0);
+  /* 黑色主色调 */
+  --primary-foreground: oklch(1 0 0);
+
+  --secondary: oklch(0.98 0 0);
+  /* 极淡灰 */
+  --secondary-foreground: oklch(0.2 0 0);
+
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.4 0 0);
+
+  --accent: oklch(0.96 0 0);
+  --accent-foreground: oklch(0.1 0 0);
+
+  --destructive: oklch(0.6 0.2 25);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.9 0.005 250);
-  --input: oklch(0.98 0 0);
-  --ring: oklch(0.5 0.15 250);
-  --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0.2 0.01 250);
-  --sidebar-accent: oklch(0.95 0.005 250);
-  --sidebar-accent-foreground: oklch(0.2 0.01 250);
-  --sidebar-border: oklch(0.9 0.005 250);
+
+  --border: oklch(0.92 0 0);
+  /* 极细淡边框 */
+  --input: oklch(0.92 0 0);
+  --ring: oklch(0.7 0 0);
+
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.15 0 0);
+  --sidebar-accent: oklch(0.96 0 0);
+  --sidebar-accent-foreground: oklch(0.1 0 0);
+  --sidebar-border: oklch(0.92 0 0);
   --sidebar-ring: oklch(0.5 0.15 250);
-  
-  /* 自定义颜色 - 股票分析专用 */
-  --success: oklch(0.55 0.15 145); /* 上涨绿色 */
-  --danger: oklch(0.55 0.22 25); /* 下跌红色 */
-  --warning: oklch(0.65 0.15 85); /* 警告黄色 */
-  --info: oklch(0.6 0.12 220); /* 信息蓝色 */
+
+  /* 自定义颜色 - 中国习惯: 红涨绿跌 */
+  --success: oklch(0.55 0.22 25);
+  /* 红色 (涨/买) */
+  --danger: oklch(0.6 0.2 145);
+  /* 绿色 (跌/卖) */
+  --warning: oklch(0.65 0.15 85);
+  --info: oklch(0.6 0.12 220);
 }
 
 .dark {
-  /* 专业金融平台风格 - 深灰色系 + 柔和蓝绿色 */
-  --primary: oklch(0.6 0.12 200); /* 柔和蓝绿色 */
-  --primary-foreground: oklch(0.98 0 0); /* 白色文字 */
-  --sidebar-primary: oklch(0.6 0.12 200);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  
-  --background: oklch(0 0 0); /* 纯黑背景 #000000 */
-  --foreground: oklch(1 0 0); /* 纯白色文字 #ffffff */
-  --card: oklch(0.1 0 0); /* 深色卡片 #1a1a1a */
-  --card-foreground: oklch(1 0 0); /* 纯白色卡片文字 */
-  --popover: oklch(0.18 0.005 250);
-  --popover-foreground: oklch(0.88 0 0);
-  --secondary: oklch(0.22 0.005 250);
-  --secondary-foreground: oklch(0.88 0 0);
-  --muted: oklch(0.25 0.005 250);
-  --muted-foreground: oklch(0.75 0 0); /* 较亮的灰色文字 */
-  --accent: oklch(0.65 0.15 180); /* 柔和蓝绿强调色 */
-  --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.55 0.22 25); /* 红色警告 */
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.3 0.01 250); /* 微妙的灰色边框 */
-  --input: oklch(0.2 0.005 250); /* 输入框背景 */
-  --ring: oklch(0.6 0.12 200);
-  
-  /* 图表颜色 - 深色主题专用 */
-  --chart-1: oklch(0.65 0.15 200); /* 主趋势线 - 蓝绿色 */
-  --chart-2: oklch(0.6 0.12 150); /* 成交量 */
-  --chart-3: oklch(0.7 0.15 85); /* 警告色 */
-  --chart-4: oklch(0.65 0.15 350); /* 强调色 */
-  --chart-5: oklch(0.6 0.1 250); /* 辅助线 */
-  
-  --sidebar: oklch(0.16 0.005 250);
-  --sidebar-foreground: oklch(0.88 0 0);
-  --sidebar-accent: oklch(0.22 0.005 250);
-  --sidebar-accent-foreground: oklch(0.88 0 0);
-  --sidebar-border: oklch(0.3 0.01 250);
-  --sidebar-ring: oklch(0.6 0.12 200);
-  
-  /* 自定义颜色 - 股票分析专用 */
-  --success: oklch(0.55 0.22 25); /* 红涨 */
-  --danger: oklch(0.65 0.18 145); /* 绿跌 */
-  --warning: oklch(0.7 0.18 85); /* 警告黄色 */
-  --info: oklch(0.65 0.12 200); /* 信息蓝绿色 */
-  --neon-green: oklch(0.7 0.2 145); /* 霜虹绿（仅用于强调） */
+  /* 专业金融平台风格 - 纯黑极简风格 */
+  --primary: oklch(0.65 0.15 200);
+  /* 稍亮的蓝绿色 */
+  --primary-foreground: oklch(1 0 0);
+  /* 纯白 */
+  --sidebar-primary: oklch(0.65 0.15 200);
+  --sidebar-primary-foreground: oklch(1 0 0);
+
+  --background: oklch(0 0 0);
+  /* 纯黑背景 #000000 */
+  --foreground: oklch(1 0 0);
+  /* 纯白色文字 #ffffff */
+
+  /* 卡片背景稍微亮一点点，或者完全黑但带边框 */
+  --card: oklch(0.08 0 0);
+  /* 接近纯黑的深灰，与背景微弱区分 */
+  --card-foreground: oklch(1 0 0);
+  /* 纯白色 */
+
+  --popover: oklch(0.08 0 0);
+  --popover-foreground: oklch(1 0 0);
+
+  --secondary: oklch(0.2 0 0);
+  /* 深灰色二级背景 */
+  --secondary-foreground: oklch(1 0 0);
+
+  --muted: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.7 0 0);
+  /* 浅灰色淡化文字，保持高可读性 */
+
+  --accent: oklch(0.25 0 0);
+  /* 强调背景 */
+  --accent-foreground: oklch(1 0 0);
+
+  --destructive: oklch(0.6 0.2 25);
+  /* 鲜艳的红色 */
+  --destructive-foreground: oklch(1 0 0);
+
+  --border: oklch(0.3 0 0);
+  /* 明显的深灰边框，确保卡片边缘可见 */
+  --input: oklch(0.15 0 0);
+  /* 输入框背景 */
+  --ring: oklch(0.65 0.15 200);
+
+  /* 图表颜色 - 提高亮度以在黑底上更清晰 */
+  --chart-1: oklch(0.7 0.15 200);
+  --chart-2: oklch(0.65 0.15 150);
+  --chart-3: oklch(0.75 0.18 85);
+  --chart-4: oklch(0.7 0.15 350);
+  --chart-5: oklch(0.65 0.1 250);
+
+  --sidebar: oklch(0 0 0);
+  /* 侧边栏也是纯黑 */
+  --sidebar-foreground: oklch(0.9 0 0);
+  --sidebar-accent: oklch(0.15 0 0);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(0.25 0 0);
+  --sidebar-ring: oklch(0.65 0.15 200);
+
+  /* 自定义颜色 - 提高饱和度和亮度 */
+  --success: oklch(0.65 0.2 145);
+  /* 亮绿色 */
+  --danger: oklch(0.65 0.22 25);
+  /* 亮红色 */
+  --warning: oklch(0.8 0.18 85);
+  /* 亮黄色 */
+  --info: oklch(0.7 0.15 230);
+  /* 亮蓝色 */
+  --neon-green: oklch(0.8 0.25 145);
+  /* 高亮霜虹绿 */
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),
@@ -156,6 +212,7 @@
 }
 
 @layer components {
+
   /**
    * Custom container utility that centers content and adds responsive padding.
    *
@@ -173,7 +230,8 @@
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
+    padding-left: 1rem;
+    /* 16px - mobile padding */
     padding-right: 1rem;
   }
 
@@ -184,103 +242,112 @@
 
   @media (min-width: 640px) {
     .container {
-      padding-left: 1.5rem; /* 24px - tablet padding */
+      padding-left: 1.5rem;
+      /* 24px - tablet padding */
       padding-right: 1.5rem;
     }
   }
 
   @media (min-width: 1024px) {
     .container {
-      padding-left: 2rem; /* 32px - desktop padding */
+      padding-left: 2rem;
+      /* 32px - desktop padding */
       padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
+      max-width: 1280px;
+      /* Standard content width */
     }
   }
 }
+
 /* 自定义动画和过渡效果 */
 @layer utilities {
+
   /* 平滑过渡 */
   .transition-smooth {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
   /* 卡片悬停效果 */
   .card-hover {
     transition: all 0.3s ease;
   }
-  
+
   .card-hover:hover {
     transform: translateY(-2px);
     box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1);
   }
-  
+
   /* 渐入动画 */
   @keyframes fade-in {
     from {
       opacity: 0;
       transform: translateY(10px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
     }
   }
-  
+
   .animate-fade-in {
     animation: fade-in 0.4s ease-out;
   }
-  
+
   /* 脉冲动画 */
   @keyframes pulse-soft {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 1;
     }
+
     50% {
       opacity: 0.8;
     }
   }
-  
+
   .animate-pulse-soft {
     animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
-  
+
   /* 股票涨跌颜色 */
   .text-up {
     color: var(--success);
   }
-  
+
   .text-down {
     color: var(--danger);
   }
-  
+
   .bg-up {
     background-color: var(--success);
   }
-  
+
   .bg-down {
     background-color: var(--danger);
   }
-  
+
   /* 渐变背景 */
   .bg-gradient-primary {
     background: linear-gradient(135deg, oklch(0.5 0.15 250) 0%, oklch(0.45 0.12 260) 100%);
   }
-  
+
   /* 深色主题下的渐变背景 */
   .dark .bg-gradient-primary {
     background: linear-gradient(135deg, oklch(0.12 0 0) 0%, oklch(0.08 0 0) 100%);
   }
-  
+
   /* KairoTrend风格 - 霜虹绿虚线边框 */
   .neon-border {
     border: 2px dashed oklch(0.75 0.25 145);
   }
-  
+
   .dark .neon-border {
     border: 2px dashed oklch(0.75 0.25 145);
     box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
   }
-  
+
   /* NEW徽章样式 */
   .badge-new {
     background: oklch(0.75 0.25 145);
@@ -291,7 +358,7 @@
     font-weight: 600;
     text-transform: uppercase;
   }
-  
+
   /* 活跃徽章样式 */
   .badge-active {
     background: oklch(0.75 0.25 145);
@@ -301,7 +368,7 @@
     font-size: 0.75rem;
     font-weight: 500;
   }
-  
+
   /* 玻璃态效果 */
   .glass-effect {
     background: rgba(255, 255, 255, 0.9);

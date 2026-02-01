@@ -30,7 +30,9 @@ function convertToTencentSymbol(symbol: string, market: 'US' | 'HK' | 'CN'): str
     return `hk${paddedSymbol}`;
   } else {
     // A股需要判断上海还是深圳
-    if (symbol.startsWith('6')) {
+    // 上海: 6xxxxx (主板600xxx, 科创板688xxx) 和 5xxxxx (ETF 50xxxx, 科创板ETF 58xxxx)
+    // 深圳: 0xxxxx (主板000xxx, 中小板002xxx) 和 3xxxxx (创业板30xxxx)
+    if (symbol.startsWith('6') || symbol.startsWith('5')) {
       return `sh${symbol}`;
     } else {
       return `sz${symbol}`;
@@ -47,7 +49,7 @@ function parseIntradayData(rawData: string[]): IntradayDataPoint[] {
     const parts = line.split(' ');
     const time = parts[0];
     const formattedTime = `${time.substring(0, 2)}:${time.substring(2, 4)}`;
-    
+
     return {
       time: formattedTime,
       price: parseFloat(parts[1]) || 0,
@@ -70,7 +72,7 @@ export async function getIntradayData(
     console.log(`[IntradayData] Using cached data for: ${symbol} (${market})`);
     return cached;
   }
-  
+
   // 美股使用Yahoo Finance API获取实时数据
   if (market === 'US') {
     const { getUSIntradayDataFromYahoo } = await import('./yahoo-finance-intraday.service.js');
@@ -83,11 +85,11 @@ export async function getIntradayData(
     // 如果Yahoo Finance失败，回退到腾讯API
     console.log('[IntradayData] Yahoo Finance failed, falling back to Tencent API');
   }
-  
+
   try {
     const tencentSymbol = convertToTencentSymbol(symbol, market);
     const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${tencentSymbol}`;
-    
+
     console.log('Fetching intraday data from:', url);
 
     const response = await fetch(url);
@@ -99,7 +101,7 @@ export async function getIntradayData(
     const buffer = await response.arrayBuffer();
     const rawText = iconv.decode(Buffer.from(buffer), 'gbk');
     const jsonData = JSON.parse(rawText);
-    
+
     if (jsonData.code !== 0) {
       throw new Error(`API error: ${jsonData.msg}`);
     }
@@ -110,7 +112,7 @@ export async function getIntradayData(
     }
 
     const dataPoints = parseIntradayData(stockData.data.data);
-    
+
     // 如果只有一个数据点（通常是美股收盘后），使用qt数据填充
     if (dataPoints.length === 1 && market === 'US') {
       const qtData = jsonData.data[tencentSymbol].qt[tencentSymbol];
@@ -118,7 +120,7 @@ export async function getIntradayData(
         // qt数据包含实时价格信息
         const currentPrice = parseFloat(qtData[3]) || dataPoints[0].price;
         const timestamp = qtData[30] || '';
-        
+
         // 生成一个简单的数据点显示当前价格
         dataPoints[0] = {
           time: timestamp ? timestamp.split(' ')[1].substring(0, 5) : dataPoints[0].time,
@@ -128,16 +130,55 @@ export async function getIntradayData(
         };
       }
     }
-    
+
     const result = {
       symbol,
       date: stockData.data.date || new Date().toISOString().split('T')[0],
       data: dataPoints,
+      signals: [] as any[] // Placeholder for signals
     };
-    
+
+    // Generate signals using technical analysis
+    // Map IntradayDataPoint to PriceDataPoint (requires checking shared types mapping)
+    // Actually, technicalAnalysisService expects PriceDataPoint (date, open, close, high, low, volume)
+    // Intraday data only has price/volume (it's minute close). We can approximation open=high=low=close for minute ticks 
+    // OR we ideally need OHLC for minutes. Tencent 'minute' data is usually just price.
+    // If we only have price, technical analysis is limited. 
+    // However, let's try to map it to allow basic indicators (MA, RSI) which only need Close.
+    try {
+      const { technicalAnalysisService } = await import('./technical-analysis.service.js');
+      const pricePoints = dataPoints.map(d => ({
+        date: d.time,
+        open: d.price,
+        high: d.price,
+        low: d.price,
+        close: d.price,
+        volume: d.volume
+      }));
+
+      // We can also add historical context if possible, but for now just use intraday
+      const techData = technicalAnalysisService.addTechnicalIndicators(pricePoints);
+      const signal = technicalAnalysisService.generateTradingSignal(techData);
+
+      // IntradayChart expects an array of signals placed at specific times. 
+      // generateTradingSignal returns ONE current signal.
+      // We can wrap it as a signal at the LAST time point.
+      if (signal && signal.signal !== 'HOLD') {
+        result.signals = [{
+          time: dataPoints[dataPoints.length - 1].time,
+          type: signal.signal.includes('BUY') ? 'buy' : 'sell',
+          price: dataPoints[dataPoints.length - 1].price,
+          strength: signal.confidence,
+          reasons: signal.reasons
+        }];
+      }
+    } catch (err) {
+      console.warn('Failed to generate intraday signals:', err);
+    }
+
     // 缓存结果
     CacheService.setIntradayCache(symbol, market, result);
-    
+
     return result;
   } catch (error) {
     console.error('Error fetching intraday data:', error);
